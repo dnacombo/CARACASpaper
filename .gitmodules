@@ -1,0 +1,12 @@
+[submodule "Cardiac_IC_labelling"]
+	path = Cardiac_IC_labelling
+	url = ./Cardiac_IC_labelling
+[submodule "eeglab"]
+	path = eeglab
+	url = ./eeglab/
+[submodule "fieldtrip"]
+	path = fieldtrip
+	url = ./fieldtrip/
+[submodule "MiscMatlab"]
+	path = MiscMatlab
+	url = ./MiscMatlab/
