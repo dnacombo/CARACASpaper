@@ -1,5 +1,5 @@
 
-dirroot = '/network/iss/cenir/analyse/meeg/00_max/CardiClassif';
+dirroot = '/network/iss/cenir/analyse/meeg/CARACAS/Test_Max/';
 dircode = fullfile(dirroot,'code');
 dirbids       = fullfile(dirroot,'ds002718');
 dirderiv = fullfile(dirbids,'derivatives');
@@ -7,6 +7,7 @@ dirout = fullfile(dirderiv,'CardiClassif');
 
 addpath(fullfile(dircode,'MiscMatlab'))
 addpath(fullfile(dircode,'MiscMatlab', 'stats'))
+addpath(fullfile(dircode,'SASICA'))
 rm_frompath('eeglab') % avoid interference with other versions
 rm_frompath('fieldtrip')
 % addpath(fullfile(dircode,'MiscMatlab', 'eeglab'))
@@ -14,14 +15,22 @@ rm_frompath('fieldtrip')
 addpath(fullfile(dircode,'fieldtrip'))
 addpath(fullfile(dircode,'fieldtrip', 'external','eeglab'))
 ft_defaults
+
 % start EEGLAB
 % [ALLEEG, EEG, CURRENTSET, ALLCOM] = eeglab;
 
 addpath(fullfile(dircode,'Cardiac_IC_labelling'));
 
+cfg_SASICA = SASICA('getdefs');
+addpath(genpath(fullfile(dircode, "SASICA",'eeglab')))
+
+
 fs = flister('derivatives/eeglab/sub.*/(?<sub>sub-\d+)_(?<task>task-\w+)_(?<step>02-ICA)_(?<mod>eeg).set','dir',dirderiv);
+% fs = fs(1);
 i_f = 1;
 %%
+heart_IC = [];
+%% CARACAS
 for i_f = 1:numel(fs)
     %%
     EEG = load(fs(i_f).name, '-mat');
@@ -31,7 +40,7 @@ for i_f = 1:numel(fs)
 
     cfg = [];
     cfg.method_chosen = 'absolute_threshold';   %'absolute_threshold' (method 1) or 'mean_std' (method 2)
-    cfg.plot_heart_IC = 1;                      % 1 or 0 (to plot the IC labelled as cardiac)
+    cfg.plot_heart_IC = 0;                      % 1 or 0 (to plot the IC labelled as cardiac)
     cfg.path_output = fullfile(dirout,fs(i_f).sub, fs(i_f).mod); % path where you want to save i) the distribution of the scores (among all IC) and ii) timecourse of the identified cardiac IC (used only if plot_heart_IC == 1)
     cfg.file_info = EEG.setname;                % name of your recording (to add it in the name of your plot files) (used only if plot_heart_IC == 1)
     cfg.nb_IC_wanted = 3;                       % number of IC selected for each metric (kurtosis, skewness...) [default: 3, to select the top 3 IC for each metric]
@@ -44,5 +53,43 @@ for i_f = 1:numel(fs)
     cfg.threshold_regularity_signal_minmax = 1.5; % For each mini-bout, the averaged signal amplitude is computed. The IC timecourse will be considered as irregular if: (max(Mean_Amp_minibout) - min(Mean_Amp_minibout)) / min(Mean_Amp_minibout) > threshold_regularity_signal_minmax [default: 1.5]
 
     mymkdir(cfg.path_output);
-    [heart_IC, table_cardiac_IC, aaa_parameters_find_heart_IC] = CARACAS(cfg, comp);
+    [tmp] = CARACAS(cfg, comp);
+    heart_IC(i_f).CARACAS = false(size(comp.label));
+    heart_IC(i_f).CARACAS(tmp) = 1;
 end
+%% correlation with EKG
+for i_f = 1:numel(fs)
+    %%
+    EEG = load(fs(i_f).name, '-mat');
+    
+    EKGchan = chnb('ekg',{EEG.chanlocs.type});
+    cfg_SASICA.chancorr.enable = 1;
+    cfg_SASICA.chancorr.channames = EKGchan;
+    cfg_SASICA.chancorr.corthresh = .8;
+    cfg_SASICA.opts.noplot = 1;
+    cfg_SASICA.opts.noplotselectcomps = 1;
+
+    EEG = eeg_SASICA(EEG, cfg_SASICA);
+    heart_IC(i_f).SASICA = EEG.reject.gcompreject;
+
+end
+% %% CARACAS in SASICA
+% for i_f = 1:numel(fs)
+%     %%
+%     EEG = load(fs(i_f).name, '-mat');
+% 
+%     cfg_SASICA.CARACAS.enable = 1;
+%     cfg_SASICA.opts.noplot = 1;
+%     cfg_SASICA.opts.noplotselectcomps = 1;
+% 
+%     EEG = eeg_SASICA(EEG, cfg_SASICA);
+%     heart_IC(i_f).CARACASICA = EEG.reject.gcompreject;
+% 
+% end
+%%
+[X, Y, T, AUC] = perfcurve(double([heart_IC.SASICA]), double([heart_IC.CARACAS]), 1);
+figure(587934);clf
+plot(X, Y);
+xlabel('False Positive')
+ylabel('True Positive')
+title(['Classification perf. AUC = ' num2str(AUC)])
