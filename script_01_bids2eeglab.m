@@ -3,7 +3,7 @@ add_eeglab
 % start EEGLAB
 % clear; [ALLEEG, EEG, CURRENTSET, ALLCOM] = eeglab;
 
-dirroot = '/network/iss/cenir/analyse/meeg/00_max/CardiClassif';
+dirroot = '/network/iss/cenir/analyse/meeg/CARACAS/Test_Max/';
 
 dirbids       = fullfile(dirroot,'ds002718');
 
