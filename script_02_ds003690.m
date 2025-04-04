@@ -1,4 +1,8 @@
 
+plot_epochs = 0;
+plot_psd = 0;
+plot_comp = 1;
+
 dirroot = '/network/iss/cenir/analyse/meeg/CARACAS/Test_Max/';
 dircode = fullfile(dirroot,'code');
 dirbids       = fullfile(dirroot,'ds003690');
@@ -24,7 +28,7 @@ addpath(fullfile(dircode,'Cardiac_IC_labelling'));
 cfg_SASICA = SASICA('getdefs');
 addpath(genpath(fullfile(dircode, "SASICA",'eeglab')))
 
-%%
+%
 fs = flister('sub.*/(?<sub>sub-[^_]+)_(?<task>task-[^_]+)_(?<run>run-[^_]+)_(?<mod>eeg).set','dir',dirbids);
 % fs = flister('meg.fif', 'dir',fullfile(dirroot), 'recurse',0);
 % fs = fs(1);
@@ -33,10 +37,15 @@ i_f = 1;
 heart_IC = [];
 %% CARACAS
 for i_f = 1%:numel(fs)
-    %%
+    %% read and segment data
     cfg = [];
     cfg.dataset = fs(1).name;
 
+    % average reference
+    cfg.reref = 'yes';
+    cfg.refmethod = 'avg';
+    cfg.refchannel = 'all';%{'M1', 'M2'};
+    % Filter
     cfg.hpfilter = 'yes';
     cfg.hpfreq = .1;
     cfg.hpfilttype = 'firws';
@@ -45,7 +54,6 @@ for i_f = 1%:numel(fs)
     cfg.lpfilttype = 'firws';
 
     data = ft_preprocessing(cfg);
-    data.hdr.chantype(60:end)
 
     cfg.trialdef.eventtype = 'cue';
     cfg.trialdef.prestim = 0.2;
@@ -55,38 +63,70 @@ for i_f = 1%:numel(fs)
     cfg.demean = 'yes';
     cfg.baselinewindow = [-.2 0];
     data = ft_redefinetrial(cfg,data);
+    %%
+    if plot_epochs
+        cfg = [];
+        ft_databrowser(cfg,data);
+    end
 
-
-    layout = ft_prepare_layout([],data);
+    %%
+    cfg = [];
+    cfg.channel = 'eeg';
+    data.elec.coordsys = 'EEGLAB';
+    
+    layout = ft_prepare_layout(cfg,data);
 
     %%
     cfg = [];
     cfg.channel = 'EEG';
     
-    comps = ft_componentanalysis(cfg,data);
+    comp = ft_componentanalysis(cfg,data);
 
+    %% control plot psd
+    if plot_psd
+        cfg = [];
+        cfg.output = 'pow';
+        cfg.method = 'mtmfft';
+        cfg.taper   = 'boxcar';
+        cfg.channel = 'eeg';
+        cfg.foi     = 0.5:1:45;
+        base_freq   = ft_freqanalysis(cfg, data);
+
+        figure(2);clf;
+        semilogy(base_freq.freq,base_freq.powspctrm)
+        hold on
+        m = mean(base_freq.powspctrm,1);
+        sd = std(base_freq.powspctrm,[],1);
+        err = [m+sd;m-sd];
+        yl = ylim;
+        err(err<0) = yl(1);
+        semilogy(base_freq.freq,m, 'k', 'LineWidth',2)
+        semilogy(base_freq.freq,err, 'k:')
+        xlabel('Freq')
+        ylabel('Pow')
+    end
+    %% plot components
+    if plot_comp
+        cfg = [];
+        cfg.layout = layout;
+        cfg.component = 1:20;
+        cfg.channel = 'eeg';
+        ft_topoplotIC(cfg,comp)
+
+        %%
+        cfg = [];
+        cfg.viewmode  = 'component';
+        cfg.layout    = layout;
+        ft_databrowser(cfg, comp);
+
+    end
     %%
-    cfg = [];
-    cfg.output = 'pow';
-    cfg.method = 'mtmfft';
-    cfg.taper   = 'boxcar';
-    cfg.foi     = 0.5:1:45;
-    base_freq   = ft_freqanalysis(cfg, data);
-    figure;
-    plot(base_freq,base_freq.powspctrm)
-    %%
-    cfg = [];
-    cfg.channel = 'meg';
-    cfg.numcomponent = 60;
-    comp = ft_componentanalysis(cfg, data);
-    comp = eeglab2fieldtrip(EEG,'comp');
-    comp.fsample = EEG.srate;
 
     cfg = [];
     cfg.method_chosen = 'absolute_threshold';   %'absolute_threshold' (method 1) or 'mean_std' (method 2)
     cfg.plot_heart_IC = 0;                      % 1 or 0 (to plot the IC labelled as cardiac)
     cfg.path_output = fullfile(dirout,fs(i_f).sub, fs(i_f).mod); % path where you want to save i) the distribution of the scores (among all IC) and ii) timecourse of the identified cardiac IC (used only if plot_heart_IC == 1)
-    cfg.file_info = EEG.setname;                % name of your recording (to add it in the name of your plot files) (used only if plot_heart_IC == 1)
+    cfg.file_info = myfileparts(fs(1).name,'f');% name of your recording (to add it in the name of your plot files) (used only if plot_heart_IC == 1)
     cfg.nb_IC_wanted = 3;                       % number of IC selected for each metric (kurtosis, skewness...) [default: 3, to select the top 3 IC for each metric]
     cfg.bpm_min = 45;                           % expected heart beat per min, for sanity check [default: 45 and 90]
     cfg.bpm_max = 90;
