@@ -1,7 +1,10 @@
 
+
+rng(123);
 plot_epochs = 0;
 plot_psd = 0;
-plot_comp = 1;
+plot_comp = 0;
+recomp = 1;
 
 dirroot = '/network/iss/cenir/analyse/meeg/CARACAS/Test_Max/';
 dircode = fullfile(dirroot,'code');
@@ -28,60 +31,76 @@ addpath(fullfile(dircode,'Cardiac_IC_labelling'));
 cfg_SASICA = SASICA('getdefs');
 addpath(genpath(fullfile(dircode, "SASICA",'eeglab')))
 
+ft_warning('off','FieldTrip:dataContainsNaN')
+
 %
 fs = flister('sub.*/(?<sub>sub-[^_]+)_(?<task>task-[^_]+)_(?<run>run-[^_]+)_(?<mod>eeg).set','dir',dirbids);
 % fs = flister('meg.fif', 'dir',fullfile(dirroot), 'recurse',0);
 % fs = fs(1);
+
+% remove sub 1 with strange cardiac rhytms
+% fs = flist_select(fs,'sub', 'sub-AB10', 'inv');
 i_f = 1;
-%%
-heart_IC = [];
 %% CARACAS
-for i_f = 1%:numel(fs)
+pC = [];dP = [];
+parfor i_f = 1:numel(fs)
     %% read and segment data
     cfg = [];
-    cfg.dataset = fs(1).name;
+    cfg.dataset = fs(i_f).name;
+    this_outdir = fullfile(dirout,fs(i_f).sub, fs(i_f).mod);
+    mymkdir(this_outdir);
+    this_file_comp = fullfile(this_outdir,strrep(fs(i_f).name,'_eeg','_comp'));
 
-    % average reference
-    cfg.reref = 'yes';
-    cfg.refmethod = 'avg';
-    cfg.refchannel = 'all';%{'M1', 'M2'};
-    % Filter
-    cfg.hpfilter = 'yes';
-    cfg.hpfreq = .1;
-    cfg.hpfilttype = 'firws';
-    cfg.lpfilter = 'yes';
-    cfg.lpfilter = 35;
-    cfg.lpfilttype = 'firws';
+    if recomp
 
-    data = ft_preprocessing(cfg);
+        % average reference
+        cfg.reref = 'yes';
+        cfg.refmethod = 'avg';
+        cfg.refchannel = 'all';%{'M1', 'M2'};
+        % Filter
+        cfg.hpfilter = 'yes';
+        cfg.hpfreq = .1;
+        cfg.hpfilttype = 'firws';
+        cfg.lpfilter = 'yes';
+        cfg.lpfilter = 35;
+        cfg.lpfilttype = 'firws';
 
-    cfg.trialdef.eventtype = 'cue';
-    cfg.trialdef.prestim = 0.2;
-    cfg.trialdef.poststim = 6;
-    cfg = ft_definetrial(cfg);
+        data = ft_preprocessing(cfg);
 
-    cfg.demean = 'yes';
-    cfg.baselinewindow = [-.2 0];
-    data = ft_redefinetrial(cfg,data);
-    %%
-    if plot_epochs
+        cfg.trialdef.eventtype = 'cue';
+        cfg.trialdef.prestim = 0.2;
+        cfg.trialdef.poststim = 6;
+        cfg = ft_definetrial(cfg);
+
+        cfg.demean = 'yes';
+        cfg.baselinewindow = [-.2 0];
+        data = ft_redefinetrial(cfg,data);
+        %%
+        if plot_epochs
+            cfg = [];
+            ft_databrowser(cfg,data);
+        end
+
+        %%
         cfg = [];
-        ft_databrowser(cfg,data);
+        cfg.channel = 'eeg';
+        data.elec.coordsys = 'EEGLAB';
+
+        layout = ft_prepare_layout(cfg,data);
+
+        %%
+        cfg = [];
+        cfg.channel = 'EEG';
+
+        comp = ft_componentanalysis(cfg,data);
+        save(this_file_comp,'-fromstruct',comp);
+
+    else
+        comp = load(this_file_comp);
     end
 
-    %%
-    cfg = [];
-    cfg.channel = 'eeg';
-    data.elec.coordsys = 'EEGLAB';
-    
-    layout = ft_prepare_layout(cfg,data);
-
-    %%
-    cfg = [];
-    cfg.channel = 'EEG';
-    
-    comp = ft_componentanalysis(cfg,data);
-
+    this_file_comp = fullfile(this_outdir,strrep(fs(i_f).name,'_eeg','_comp'));
+    comp = load(this_file_comp);
     %% control plot psd
     if plot_psd
         cfg = [];
@@ -125,8 +144,8 @@ for i_f = 1%:numel(fs)
     cfg = [];
     cfg.method_chosen = 'absolute_threshold';   %'absolute_threshold' (method 1) or 'mean_std' (method 2)
     cfg.plot_heart_IC = 0;                      % 1 or 0 (to plot the IC labelled as cardiac)
-    cfg.path_output = fullfile(dirout,fs(i_f).sub, fs(i_f).mod); % path where you want to save i) the distribution of the scores (among all IC) and ii) timecourse of the identified cardiac IC (used only if plot_heart_IC == 1)
-    cfg.file_info = myfileparts(fs(1).name,'f');% name of your recording (to add it in the name of your plot files) (used only if plot_heart_IC == 1)
+    cfg.path_output = this_outdir; % path where you want to save i) the distribution of the scores (among all IC) and ii) timecourse of the identified cardiac IC (used only if plot_heart_IC == 1)
+    cfg.file_info = myfileparts(fs(i_f).name,'f');% name of your recording (to add it in the name of your plot files) (used only if plot_heart_IC == 1)
     cfg.nb_IC_wanted = 3;                       % number of IC selected for each metric (kurtosis, skewness...) [default: 3, to select the top 3 IC for each metric]
     cfg.bpm_min = 45;                           % expected heart beat per min, for sanity check [default: 45 and 90]
     cfg.bpm_max = 90;
@@ -136,44 +155,49 @@ for i_f = 1%:numel(fs)
     cfg.mini_bouts_duration_for_SignalAmplRange = 10; % for sanity check (avoids false positive): the time course of a potential heart IC must be ~regular. The timecourse will be divided into mini-segments of this duration, and we will check that the amplitude between these mini-bouts is ~similar. [default: 10]
     cfg.threshold_regularity_signal_minmax = 1.5; % For each mini-bout, the averaged signal amplitude is computed. The IC timecourse will be considered as irregular if: (max(Mean_Amp_minibout) - min(Mean_Amp_minibout)) / min(Mean_Amp_minibout) > threshold_regularity_signal_minmax [default: 1.5]
 
-    mymkdir(cfg.path_output);
     [tmp] = CARACAS(cfg, comp);
-    heart_IC(i_f).CARACAS = false(size(comp.label));
-    heart_IC(i_f).CARACAS(tmp) = 1;
-end
-%% correlation with EKG
-for i_f = 1:numel(fs)
-    %%
-    EEG = load(fs(i_f).name, '-mat');
-    
-    EKGchan = chnb('ekg',{EEG.chanlocs.type});
-    cfg_SASICA.chancorr.enable = 1;
-    cfg_SASICA.chancorr.channames = EKGchan;
-    cfg_SASICA.chancorr.corthresh = .8;
-    cfg_SASICA.opts.noplot = 1;
-    cfg_SASICA.opts.noplotselectcomps = 1;
+    fs(i_f).CARACAS.rej = false(1,numel(comp.label));
+    fs(i_f).CARACAS.rej(tmp) = 1;
 
-    EEG = eeg_SASICA(EEG, cfg_SASICA);
-    heart_IC(i_f).SASICA = EEG.reject.gcompreject;
+    %% correlation with EKG
 
+
+    EKGchan = chnb('ekg',data.label);
+
+    EKG = cat(2,data.trial{:});
+    EKG = EKG(EKGchan,:,:)';
+    ICs = cat(2,comp.trial{:})';
+
+    c  = abs(corr(ICs,EKG))';
+    corthresh = .6;
+    rej = c > corthresh ;
+
+    fs(i_f).CORR.c = c;
+    fs(i_f).CORR.rej = rej;
+
+    %% SDT
+
+    pC(i_f) = sum(fs(i_f).CORR == fs(i_f).CARACAS) / numel(fs(i_f).CORR);
+    dP(i_f) = PAL_SDT_MAFC_PCtoDP(pC(i_f),numel(fs(i_f).CORR));
 end
 % %% CARACAS in SASICA
 % for i_f = 1:numel(fs)
 %     %%
 %     EEG = load(fs(i_f).name, '-mat');
-% 
+%
 %     cfg_SASICA.CARACAS.enable = 1;
 %     cfg_SASICA.opts.noplot = 1;
 %     cfg_SASICA.opts.noplotselectcomps = 1;
-% 
+%
 %     EEG = eeg_SASICA(EEG, cfg_SASICA);
 %     heart_IC(i_f).CARACASICA = EEG.reject.gcompreject;
-% 
+%
 % end
-%%
-[X, Y, T, AUC] = perfcurve(double([heart_IC.SASICA]), double([heart_IC.CARACAS]), 1);
-figure(587934);clf
-plot(X, Y);
-xlabel('False Positive')
-ylabel('True Positive')
-title(['Classification perf. AUC = ' num2str(AUC)])
+%% ROC analysis
+% [X, Y, T, AUC] = perfcurve(double([fs.CORR]), double([fs.CARACAS]), 1);
+% figure(587934);clf
+% plot(X, Y, 'Marker','+');
+% xlabel('False Positive')
+% ylabel('True Positive')
+% title(['Classification perf. AUC = ' num2str(AUC)])
+
