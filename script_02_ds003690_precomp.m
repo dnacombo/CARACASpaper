@@ -1,40 +1,19 @@
 
-
 rng(123);
 plot_epochs = 0;
 plot_psd = 0;
 plot_comp = 0;
-recomp = 1;
+force_recomp = 0;
 
-dirroot = '/network/iss/cenir/analyse/meeg/CARACAS/Test_Max/';
-dircode = fullfile(dirroot,'code');
-dirbids       = fullfile(dirroot,'ds003690');
-dirderiv = fullfile(dirbids,'derivatives');
-dirout = fullfile(dirderiv,'CardiClassif');
+corthresh = .6;
 
-addpath(fullfile(dircode,'MiscMatlab'))
-addpath(fullfile(dircode,'MiscMatlab', 'stats'))
-addpath(fullfile(dircode,'SASICA'))
-rm_frompath('eeglab') % avoid interference with other versions
-rm_frompath('fieldtrip')
-% addpath(fullfile(dircode,'MiscMatlab', 'eeglab'))
-% addpath(fullfile(dircode,'eeglab'))
-addpath(fullfile(dircode,'fieldtrip'))
-addpath(fullfile(dircode,'fieldtrip', 'external','eeglab'))
-ft_defaults
 
-% start EEGLAB
-% [ALLEEG, EEG, CURRENTSET, ALLCOM] = eeglab;
-
-addpath(fullfile(dircode,'Cardiac_IC_labelling'));
-
-cfg_SASICA = SASICA('getdefs');
-addpath(genpath(fullfile(dircode, "SASICA",'eeglab')))
-
-ft_warning('off','FieldTrip:dataContainsNaN')
+setpath_ds003690
 
 %
 fs = flister('sub.*/(?<sub>sub-[^_]+)_(?<task>task-[^_]+)_(?<run>run-[^_]+)_(?<mod>eeg).set','dir',dirbids);
+load(fullfile(dirout,'AllFilesAndScoresList.mat'))
+
 % fs = flister('meg.fif', 'dir',fullfile(dirroot), 'recurse',0);
 % fs = fs(1);
 
@@ -42,17 +21,32 @@ fs = flister('sub.*/(?<sub>sub-[^_]+)_(?<task>task-[^_]+)_(?<run>run-[^_]+)_(?<m
 % fs = flist_select(fs,'sub', 'sub-AB10', 'inv');
 i_f = 1;
 %% CARACAS
-pC = [];dP = [];
-parfor i_f = 1:numel(fs)
+for i_f = 1:numel(fs)
+    fprintf('#############################################\n')
+    fprintf('######### %s_%s_%s #########\n',fs(i_f).sub,fs(i_f).task,fs(i_f).run)
+    fprintf('#############################################\n')
     %% read and segment data
     cfg = [];
     cfg.dataset = fs(i_f).name;
     this_outdir = fullfile(dirout,fs(i_f).sub, fs(i_f).mod);
     mymkdir(this_outdir);
-    this_file_comp = fullfile(this_outdir,strrep(fs(i_f).name,'_eeg','_comp'));
+    this_file_eeg = fullfile(this_outdir,[myfileparts(fs(i_f).name,'f') '.mat']);
+    this_file_comp = strrep(this_file_eeg,'_eeg','_comp');
+    fs(i_f).compf = this_file_comp;
+    fs(i_f).eegf = this_file_eeg;
 
-    if recomp
+    try
+        if force_recomp
+            error('planned force recomp')
+        end
+        data = load(this_file_eeg,'-mat');
+        comp = load(this_file_comp,'-mat');
+    catch
+        data = [];
+        comp = [];
+    end
 
+    if isempty(comp)
         % average reference
         cfg.reref = 'yes';
         cfg.refmethod = 'avg';
@@ -92,15 +86,13 @@ parfor i_f = 1:numel(fs)
         cfg = [];
         cfg.channel = 'EEG';
 
+        rng(123);
         comp = ft_componentanalysis(cfg,data);
         save(this_file_comp,'-fromstruct',comp);
-
-    else
-        comp = load(this_file_comp);
+        save(this_file_eeg,'-fromstruct',data);
     end
 
-    this_file_comp = fullfile(this_outdir,strrep(fs(i_f).name,'_eeg','_comp'));
-    comp = load(this_file_comp);
+
     %% control plot psd
     if plot_psd
         cfg = [];
@@ -161,7 +153,6 @@ parfor i_f = 1:numel(fs)
 
     %% correlation with EKG
 
-
     EKGchan = chnb('ekg',data.label);
 
     EKG = cat(2,data.trial{:});
@@ -169,17 +160,20 @@ parfor i_f = 1:numel(fs)
     ICs = cat(2,comp.trial{:})';
 
     c  = abs(corr(ICs,EKG))';
-    corthresh = .6;
     rej = c > corthresh ;
 
     fs(i_f).CORR.c = c;
     fs(i_f).CORR.rej = rej;
 
     %% SDT
-
-    pC(i_f) = sum(fs(i_f).CORR == fs(i_f).CARACAS) / numel(fs(i_f).CORR);
-    dP(i_f) = PAL_SDT_MAFC_PCtoDP(pC(i_f),numel(fs(i_f).CORR));
+    fs(i_f).H = sum(fs(i_f).CORR.rej & fs(i_f).CARACAS.rej);
+    fs(i_f).FA = sum(~ fs(i_f).CORR.rej & fs(i_f).CARACAS.rej);
+    fs(i_f).pC = sum(fs(i_f).CORR.rej == fs(i_f).CARACAS.rej) / numel(fs(i_f).CORR.rej);
+    fs(i_f).dp = PAL_SDT_MAFC_PCtoDP(fs(i_f).pC,numel(fs(i_f).CORR));
 end
+
+save(fullfile(dirout,'AllFilesAndScoresList.mat'),'fs')
+
 % %% CARACAS in SASICA
 % for i_f = 1:numel(fs)
 %     %%
@@ -200,4 +194,19 @@ end
 % xlabel('False Positive')
 % ylabel('True Positive')
 % title(['Classification perf. AUC = ' num2str(AUC)])
+%% 
+addpath(fullfile(dircode,'MiscMatlab/plot/'))
 
+fig(22,4);clf
+subplot(221)
+imagesc(CORRrej);
+title('CORR')
+subplot(222);
+imagesc(CARArej)
+title('CARACAS')
+subplot(223);
+imagesc(CORRrej & CARArej)
+title('Hit')
+subplot(224);
+imagesc(CORRrej & ~ CARArej)
+title('Miss')
