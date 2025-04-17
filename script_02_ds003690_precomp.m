@@ -49,6 +49,7 @@ for i_f = 1:numel(fs)
     if isempty(comp)
         % average reference
         cfg.reref = 'yes';
+        cfg.channel =  {'eeg' '-M1' '-M2'};
         cfg.refmethod = 'avg';
         cfg.refchannel = 'all';%{'M1', 'M2'};
         % Filter
@@ -118,6 +119,7 @@ for i_f = 1:numel(fs)
     end
     %% plot components
     if plot_comp
+        %%
         cfg = [];
         cfg.layout = layout;
         cfg.component = 1:20;
@@ -188,25 +190,9 @@ save(fullfile(dirout,'AllFilesAndScoresList.mat'),'fs')
 %
 % end
 %% ROC analysis
-% [X, Y, T, AUC] = perfcurve(double([fs.CORR]), double([fs.CARACAS]), 1);
-% figure(587934);clf
-% plot(X, Y, 'Marker','+');
-% xlabel('False Positive')
-% ylabel('True Positive')
-% title(['Classification perf. AUC = ' num2str(AUC)])
-%% 
-addpath(fullfile(dircode,'MiscMatlab/plot/'))
-
-fig(22,4);clf
-subplot(221)
-imagesc(CORRrej);
-title('CORR')
-subplot(222);
-imagesc(CARArej)
-title('CARACAS')
-subplot(223);
-imagesc(CORRrej & CARArej)
-title('Hit')
-subplot(224);
-imagesc(CORRrej & ~ CARArej)
-title('Miss')
+[X, Y, T, AUC] = perfcurve(double([fs.CORR]), double([fs.CARACAS]), 1);
+figure(587934);clf
+plot(X, Y, 'Marker','+');
+xlabel('False Positive')
+ylabel('True Positive')
+title(['Classification perf. AUC = ' num2str(AUC)])
