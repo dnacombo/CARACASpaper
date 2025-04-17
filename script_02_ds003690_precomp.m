@@ -1,17 +1,21 @@
+function script_02_ds003690_precomp(i_f)
 
-rng(123);
+if not(exist('i_f','var'))
+    i_f = 1;
+end
 plot_epochs = 0;
 plot_psd = 0;
 plot_comp = 0;
 force_recomp = 0;
 
-corthresh = .6;
+corthresh = .6; % correlation threshold component time course with ECG
 
 
 setpath_ds003690
 
 %
-fs = flister('sub.*/(?<sub>sub-[^_]+)_(?<task>task-[^_]+)_(?<run>run-[^_]+)_(?<mod>eeg).set','dir',dirbids);
+% fs = flister('sub.*/(?<sub>sub-[^_]+)_(?<task>task-[^_]+)_(?<run>run-[^_]+)_(?<mod>eeg).set','dir',dirbids);
+
 load(fullfile(dirout,'AllFilesAndScoresList.mat'))
 
 % fs = flister('meg.fif', 'dir',fullfile(dirroot), 'recurse',0);
@@ -19,9 +23,8 @@ load(fullfile(dirout,'AllFilesAndScoresList.mat'))
 
 % remove sub 1 with strange cardiac rhytms
 % fs = flist_select(fs,'sub', 'sub-AB10', 'inv');
-i_f = 1;
 %% CARACAS
-for i_f = 1:numel(fs)
+for i_f = i_f%1:numel(fs)
     fprintf('#############################################\n')
     fprintf('######### %s_%s_%s #########\n',fs(i_f).sub,fs(i_f).task,fs(i_f).run)
     fprintf('#############################################\n')
@@ -30,6 +33,13 @@ for i_f = 1:numel(fs)
     cfg.dataset = fs(i_f).name;
     this_outdir = fullfile(dirout,fs(i_f).sub, fs(i_f).mod);
     mymkdir(this_outdir);
+    lock = fullfile(this_outdir,'lock');
+    if exist(lock,'file')
+        continue
+    else
+        % fclose(fopen(lock,'a'));
+    end
+
     this_file_eeg = fullfile(this_outdir,[myfileparts(fs(i_f).name,'f') '.mat']);
     this_file_comp = strrep(this_file_eeg,'_eeg','_comp');
     fs(i_f).compf = this_file_comp;
@@ -49,7 +59,7 @@ for i_f = 1:numel(fs)
     if isempty(comp)
         % average reference
         cfg.reref = 'yes';
-        cfg.channel =  {'eeg' '-M1' '-M2'};
+        cfg.channel =  {'all' '-M1' '-M2'};
         cfg.refmethod = 'avg';
         cfg.refchannel = 'all';%{'M1', 'M2'};
         % Filter
@@ -168,13 +178,15 @@ for i_f = 1:numel(fs)
     fs(i_f).CORR.rej = rej;
 
     %% SDT
+    fs(i_f).pC = sum(fs(i_f).CORR.rej == fs(i_f).CARACAS.rej) / numel(fs(i_f).CORR.rej);
+    fs(i_f).dp = PAL_SDT_MAFC_PCtoDP(fs(i_f).pC,numel(fs(i_f).CORR.rej));
     fs(i_f).H = sum(fs(i_f).CORR.rej & fs(i_f).CARACAS.rej);
     fs(i_f).FA = sum(~ fs(i_f).CORR.rej & fs(i_f).CARACAS.rej);
-    fs(i_f).pC = sum(fs(i_f).CORR.rej == fs(i_f).CARACAS.rej) / numel(fs(i_f).CORR.rej);
-    fs(i_f).dp = PAL_SDT_MAFC_PCtoDP(fs(i_f).pC,numel(fs(i_f).CORR));
+    
+    % delete(lock)
 end
-
-save(fullfile(dirout,'AllFilesAndScoresList.mat'),'fs')
+f = fs(i_f);
+save(fullfile(dirout,f.sub,sprintf('%s_FilesAndScoresList.mat',f.sub)),'f')
 
 % %% CARACAS in SASICA
 % for i_f = 1:numel(fs)
@@ -189,10 +201,10 @@ save(fullfile(dirout,'AllFilesAndScoresList.mat'),'fs')
 %     heart_IC(i_f).CARACASICA = EEG.reject.gcompreject;
 %
 % end
-%% ROC analysis
-[X, Y, T, AUC] = perfcurve(double([fs.CORR]), double([fs.CARACAS]), 1);
-figure(587934);clf
-plot(X, Y, 'Marker','+');
-xlabel('False Positive')
-ylabel('True Positive')
-title(['Classification perf. AUC = ' num2str(AUC)])
+% %% ROC analysis
+% [X, Y, T, AUC] = perfcurve(double([fs.CORR]), double([fs.CARACAS]), 1);
+% figure(587934);clf
+% plot(X, Y, 'Marker','+');
+% xlabel('False Positive')
+% ylabel('True Positive')
+% title(['Classification perf. AUC = ' num2str(AUC)])
