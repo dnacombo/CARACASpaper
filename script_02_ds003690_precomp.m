@@ -10,8 +10,8 @@ force_recomp = 0;
 
 corthresh = .6; % correlation threshold component time course with ECG
 
-
 setpath_ds003690
+ft_warning('off','FieldTrip:dataContainsNaN')
 
 %
 % fs = flister('sub.*/(?<sub>sub-[^_]+)_(?<task>task-[^_]+)_(?<run>run-[^_]+)_(?<mod>eeg).set','dir',dirbids);
@@ -23,7 +23,7 @@ load(fullfile(dirout,'AllFilesAndScoresList.mat'))
 
 % remove sub 1 with strange cardiac rhytms
 % fs = flist_select(fs,'sub', 'sub-AB10', 'inv');
-%% CARACAS
+%% 
 for i_f = i_f%1:numel(fs)
     fprintf('#############################################\n')
     fprintf('######### %s_%s_%s #########\n',fs(i_f).sub,fs(i_f).task,fs(i_f).run)
@@ -143,15 +143,23 @@ for i_f = i_f%1:numel(fs)
         ft_databrowser(cfg, comp);
 
     end
+    cfgtmp = [];
+    if isfield(comp, 'sampleinfo')
+        cfgtmp.trl = [1, comp.sampleinfo(end,2), 0];
+    else
+        cfgtmp.trl = [1, sum(cellfun(@numel,comp.time)), 0]; % Start, End, Offset
+    end
+    comp_continu = ft_redefinetrial(cfgtmp, comp);
+
     %% CARACAS in SASICA
 
     cfg_SASICA.CARACAS.enable = 1;
     cfg_SASICA.opts.noplot = 1;
     cfg_SASICA.opts.noplotselectcomps = 1;
 
-    cfg = ft_SASICA(cfg_SASICA, comp, data);
-    fs(i_f).SASICARACAS.meas = cfg.reject.SASICA.icaCARACAS;
-    fs(i_f).SASICARACAS.rej = cfg.reject.gcompreject;
+    SASICCARACAS = ft_SASICA(cfg_SASICA, comp_continu, data);
+    fs(i_f).SASICARACAS.meas = SASICCARACAS.reject.SASICA.icaCARACAS;
+    fs(i_f).SASICARACAS.rej = SASICCARACAS.reject.gcompreject;
     
     %% CARACAS
 
@@ -169,7 +177,7 @@ for i_f = i_f%1:numel(fs)
     cfg.mini_bouts_duration_for_SignalAmplRange = 10; % for sanity check (avoids false positive): the time course of a potential heart IC must be ~regular. The timecourse will be divided into mini-segments of this duration, and we will check that the amplitude between these mini-bouts is ~similar. [default: 10]
     cfg.threshold_regularity_signal_minmax = 1.5; % For each mini-bout, the averaged signal amplitude is computed. The IC timecourse will be considered as irregular if: (max(Mean_Amp_minibout) - min(Mean_Amp_minibout)) / min(Mean_Amp_minibout) > threshold_regularity_signal_minmax [default: 1.5]
 
-    [tmp, meas] = CARACAS(cfg, comp);
+    [tmp, meas] = CARACAS(cfg, comp_continu);
     fs(i_f).CARACAS.meas = meas;
     fs(i_f).CARACAS.rej = false(1,numel(comp.label));
     fs(i_f).CARACAS.rej(tmp) = 1;
