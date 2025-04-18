@@ -23,6 +23,7 @@ ft_defaults
 % [ALLEEG, EEG, CURRENTSET, ALLCOM] = eeglab;
 
 addpath(fullfile(dircode,'Cardiac_IC_labelling'));
+addpath(fullfile(dircode,'Cardiac_IC_labelling', 'heart_functions/'));
 
 cfg_SASICA = SASICA('getdefs');
 addpath(genpath(fullfile(dircode, "SASICA",'eeglab')))
