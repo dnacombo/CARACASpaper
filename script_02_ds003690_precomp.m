@@ -143,7 +143,17 @@ for i_f = i_f%1:numel(fs)
         ft_databrowser(cfg, comp);
 
     end
-    %%
+    %% CARACAS in SASICA
+
+    cfg_SASICA.CARACAS.enable = 1;
+    cfg_SASICA.opts.noplot = 1;
+    cfg_SASICA.opts.noplotselectcomps = 1;
+
+    cfg = ft_SASICA(cfg_SASICA, comp, data);
+    fs(i_f).SASICARACAS.meas = cfg.reject.SASICA.icaCARACAS;
+    fs(i_f).SASICARACAS.rej = cfg.reject.gcompreject;
+    
+    %% CARACAS
 
     cfg = [];
     cfg.method_chosen = 'absolute_threshold';   %'absolute_threshold' (method 1) or 'mean_std' (method 2)
@@ -159,9 +169,11 @@ for i_f = i_f%1:numel(fs)
     cfg.mini_bouts_duration_for_SignalAmplRange = 10; % for sanity check (avoids false positive): the time course of a potential heart IC must be ~regular. The timecourse will be divided into mini-segments of this duration, and we will check that the amplitude between these mini-bouts is ~similar. [default: 10]
     cfg.threshold_regularity_signal_minmax = 1.5; % For each mini-bout, the averaged signal amplitude is computed. The IC timecourse will be considered as irregular if: (max(Mean_Amp_minibout) - min(Mean_Amp_minibout)) / min(Mean_Amp_minibout) > threshold_regularity_signal_minmax [default: 1.5]
 
-    [tmp] = CARACAS(cfg, comp);
+    [tmp, meas] = CARACAS(cfg, comp);
+    fs(i_f).CARACAS.meas = meas;
     fs(i_f).CARACAS.rej = false(1,numel(comp.label));
     fs(i_f).CARACAS.rej(tmp) = 1;
+
 
     %% correlation with EKG
 
@@ -188,19 +200,6 @@ end
 f = fs(i_f);
 save(fullfile(dirout,f.sub,sprintf('%s_FilesAndScoresList.mat',f.sub)),'f')
 
-% %% CARACAS in SASICA
-% for i_f = 1:numel(fs)
-%     %%
-%     EEG = load(fs(i_f).name, '-mat');
-%
-%     cfg_SASICA.CARACAS.enable = 1;
-%     cfg_SASICA.opts.noplot = 1;
-%     cfg_SASICA.opts.noplotselectcomps = 1;
-%
-%     EEG = eeg_SASICA(EEG, cfg_SASICA);
-%     heart_IC(i_f).CARACASICA = EEG.reject.gcompreject;
-%
-% end
 % %% ROC analysis
 % [X, Y, T, AUC] = perfcurve(double([fs.CORR]), double([fs.CARACAS]), 1);
 % figure(587934);clf
