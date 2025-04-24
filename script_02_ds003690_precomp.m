@@ -206,7 +206,7 @@ for i_f = i_f%1:numel(fs)
     % delete(lock)
 end
 f = fs(i_f);
-save(fullfile(dirout,f.sub,sprintf('%s_FilesAndScoresList.mat',f.sub)),'f')
+save(fullfile(dirout,f.sub,sprintf('%s_%s_%s_FilesAndScoresList.mat',f.sub, f.task, f.run)),'f')
 
 % %% ROC analysis
 % [X, Y, T, AUC] = perfcurve(double([fs.CORR]), double([fs.CARACAS]), 1);
