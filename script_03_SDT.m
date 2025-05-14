@@ -4,21 +4,31 @@ setpath_ds003690
 
 load(fullfile(dirout,'AllFilesAndScoresList.mat'))
 
-
+if ispc
+    for i = 1:numel(fs)
+        fields = {'name', 'compf','eegf'};
+        for j = 1:numel(fields)
+            fs(i).(fields{j}) = strrep(fs(i).(fields{j}),'/network','\');
+            fs(i).(fields{j}) = strrep(fs(i).(fields{j}),'/','\');
+        end
+    end
+end
 %%
 
 CORRrej = [];CARACASrej = [];SASICARACASrej = [];
 for i = 1:numel(fs)
     CORRrej(i,:) = fs(i).CORR.rej;
     CARACASrej(i,:) = fs(i).CARACAS.rej;
-    SASICARACASrej(i,:) = fs(i).SASICARACAS.rej;
+    % CARACASrej(i,:) = [fs(i).CARACAS.meas.PQ] > 1/3;
+    % SASICARACASrej(i,:) = fs(i).SASICARACAS.rej;
+    MANUALrej(i,:) = fs(i).MANUAL.rej;
 end
 %%
 figure(595);clf
 set(gcf,'UserData',fs)
 subplot(321)
-hi = imagesc(CORRrej');
-title('CORR')
+hi = imagesc(MANUALrej');
+title('MANUAL')
 set(hi,"ButtonDownFcn",@plotit);
 subplot(322);
 hi = imagesc(CARACASrej');
@@ -26,11 +36,11 @@ title('CARACAS')
 set(hi,"ButtonDownFcn",@plotit);
 
 subplot(3,2,[3 6]);
-toplot = NaN(size(CORRrej));
-toplot(CORRrej & CARACASrej) = 1;
-toplot(CORRrej & ~ CARACASrej) = 2;
-toplot(~CORRrej & ~CARACASrej) = 3;
-toplot(~CORRrej & CARACASrej) = 4;
+toplot = NaN(size(MANUALrej));
+toplot(MANUALrej & CARACASrej) = 1;
+toplot(MANUALrej & ~ CARACASrej) = 2;
+toplot(~MANUALrej & ~CARACASrej) = 3;
+toplot(~MANUALrej & CARACASrej) = 4;
 names = {'Hit','Miss','CR','FA'};
 
 hi = imagesc(toplot');
@@ -67,8 +77,35 @@ cfg.channel = 'eeg';
 cfg.figure = h;
 ft_topoplotIC(cfg,comp)
 
+title(['comp' num2str(icmp) ' ' fs(ids).sub,' ', fs(ids).task,' ', fs(ids).run], 'fontsize',16);
+
+
+data = load(fs(ids).eegf);
+EKGchan = chnb('ekg',data.label);
+EKG = data.trial{1}(EKGchan,:);
+EKG = EKG/range(EKG) * range(comp.trial{1}(icmp,:));
+
 subplot(212)
 plot(comp.time{1},comp.trial{1}(icmp,:))
+hold on
+plot(comp.time{1},EKG,'r:')
+
+xl = xlim;yl = ylim;
+
+toprint = removefields(fs(ids).CARACAS.meas(icmp),{'Ampl_var'});
+fields = fieldnames(toprint);
+threshs_min = [0 0 0 0 0 0 2 0 0 35];
+threshs_max = [1/3 1/3 1/3 1/3 1/3 1/3 inf 1/3 1/3 90];
+for i = 1:numel(fields)
+    strtitle = [fields{i} ' = ' num2str(toprint.(fields{i}),2)];
+    c = 'k';
+    c = ifelse(toprint.(fields{i}) < threshs_min(i),'r',c);
+    c = ifelse(toprint.(fields{i}) > threshs_max(i),'r',c);
+    x = xl(1)+(diff(xl)/3)*rem(i-1,round(numel(fields)/3)) +1;
+    y = yl(1)-(floor((i)/(numel(fields)/3))+1)*diff(yl)/20-diff(yl)/10;
+    text(x,y,strtitle,'HorizontalAlignment','left','VerticalAlignment','baseline','FontSize',8, 'Interpreter','none', 'color',c)
+end
+title([ifelse(fs(ids).CARACAS.rej(icmp),'CARACAS ',''),ifelse(fs(ids).MANUAL.rej(icmp), ' MANUAL ' ,'')])
 
 drawnow
 
@@ -99,6 +136,8 @@ cfg.mini_bouts_duration_for_SignalAmplRange = 10; % for sanity check (avoids fal
 cfg.threshold_regularity_signal_minmax = 1.5; % For each mini-bout, the averaged signal amplitude is computed. The IC timecourse will be considered as irregular if: (max(Mean_Amp_minibout) - min(Mean_Amp_minibout)) / min(Mean_Amp_minibout) > threshold_regularity_signal_minmax [default: 1.5]
 
 [isCardiac, meas] = CARACAS(cfg, comp);
+
+ids
 
 corr = fs(ids).CORR.c(icmp)
 

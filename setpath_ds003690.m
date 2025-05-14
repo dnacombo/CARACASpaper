@@ -1,4 +1,8 @@
-dirroot = '/network/iss/cenir/analyse/meeg/CARACAS/Test_Max/';
+if ispc
+    dirroot = '\\iss\cenir\analyse\meeg\CARACAS\Test_Max\';
+else
+    dirroot = '/network/iss/cenir/analyse/meeg/CARACAS/Test_Max/';
+end
 dircode = fullfile(dirroot,'code');
 dirbids       = fullfile(dirroot,'ds003690');
 dirderiv = fullfile(dirbids,'derivatives');
@@ -7,8 +11,8 @@ dirout = fullfile(dirderiv,'CardiClassif');
 
 addpath(fullfile(dircode,'MiscMatlab'))
 addpath(fullfile(dircode,'MiscMatlab', 'stats'))
-addpath(fullfile(dircode,'MiscMatlab/plot/'))
-addpath(fullfile(dircode,'MiscMatlab/plot/panel'))
+addpath(fullfile(dircode,strrep('MiscMatlab/plot/','/',filesep)))
+addpath(fullfile(dircode,strrep('MiscMatlab/plot/panel','/',filesep)))
 
 addpath(fullfile(dircode,'Palamedes'))
 addpath(fullfile(dircode,'SASICA'))
@@ -23,8 +27,9 @@ ft_defaults
 % [ALLEEG, EEG, CURRENTSET, ALLCOM] = eeglab;
 
 addpath(fullfile(dircode,'Cardiac_IC_labelling'));
-addpath(fullfile(dircode,'Cardiac_IC_labelling', 'heart_functions/'));
+addpath(fullfile(dircode,'Cardiac_IC_labelling', 'heart_functions'));
 
 cfg_SASICA = SASICA('getdefs');
 addpath(genpath(fullfile(dircode, "SASICA",'eeglab')))
 
+mymkdir(dirout)

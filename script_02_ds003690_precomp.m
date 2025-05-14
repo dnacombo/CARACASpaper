@@ -15,7 +15,7 @@ ft_warning('off','FieldTrip:dataContainsNaN')
 
 %
 % fs = flister('sub.*/(?<sub>sub-[^_]+)_(?<task>task-[^_]+)_(?<run>run-[^_]+)_(?<mod>eeg).set','dir',dirbids);
-
+% save(fullfile(dirout,'AllFilesAndScoresList.mat'),'fs')
 load(fullfile(dirout,'AllFilesAndScoresList.mat'))
 
 % fs = flister('meg.fif', 'dir',fullfile(dirroot), 'recurse',0);
@@ -151,15 +151,15 @@ for i_f = i_f%1:numel(fs)
     end
     comp_continu = ft_redefinetrial(cfgtmp, comp);
 
-    %% CARACAS in SASICA
-
-    cfg_SASICA.CARACAS.enable = 1;
-    cfg_SASICA.opts.noplot = 1;
-    cfg_SASICA.opts.noplotselectcomps = 1;
-
-    SASICCARACAS = ft_SASICA(cfg_SASICA, comp_continu, data);
-    fs(i_f).SASICARACAS.meas = SASICCARACAS.reject.SASICA.icaCARACAS;
-    fs(i_f).SASICARACAS.rej = SASICCARACAS.reject.gcompreject;
+    % %% CARACAS in SASICA
+    % 
+    % cfg_SASICA.CARACAS.enable = 1;
+    % cfg_SASICA.opts.noplot = 1;
+    % cfg_SASICA.opts.noplotselectcomps = 1;
+    % 
+    % SASICCARACAS = ft_SASICA(cfg_SASICA, comp_continu, data);
+    % fs(i_f).SASICARACAS.meas = SASICCARACAS.reject.SASICA.icaCARACAS;
+    % fs(i_f).SASICARACAS.rej = SASICCARACAS.reject.gcompreject;
     
     %% CARACAS
 

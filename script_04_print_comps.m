@@ -1,6 +1,12 @@
+function script_04_print_comps(i_f)
+
+if not(exist('i_f','var'))
+    i_f = 1;
+end
 setpath_ds003690
 
-dont_plot_topos = 0;
+dont_plot_topos = 1;
+trial2plot = 2;
 
 mymkdir(fullfile(dirout,'AllCompImages'))
 
@@ -17,24 +23,53 @@ writetable(struct2table(s),'allfiles.csv');
 %% 
 
 
-for i_f = 1:numel(fs)
+for i_f = i_f%1:numel(fs)
     outpng = fullfile(dirout,'AllCompImages',[fs(i_f).sub,'_', fs(i_f).task,'_', fs(i_f).run, '_allComps_',ifelse(dont_plot_topos,'tc','topo'), '.png']);
     fprintf('%s\n',myfileparts(outpng,'f'));
     png = dir(outpng);
     compmat = dir(fs(i_f).compf);
-    if isempty(png) || png.datenum < compmat.datenum
+    if 1%isempty(png) || png.datenum < compmat.datenum
         figure('position', [ 1         121        1920         988]);
         set(gcf,'WindowState','maximized')
 
         comp = load(fs(i_f).compf);
+        data = load(fs(i_f).eegf);
+        EKGchan = chnb('ekg',data.label);
         comp.cfg = [];
         %%
         for i_c = 1:numel(comp.label)
             if dont_plot_topos
-
-                h = subplot(6,10,i_c);
-                plot(comp.time{1},comp.trial{1}(i_c,:))
-                title(sprintf('Component %d',i_c))
+                %%
+                h = subplot(6,10,i_c);cla
+                plot(comp.time{trial2plot},comp.trial{trial2plot}(i_c,:))
+                hold on
+                EKG = data.trial{trial2plot}(EKGchan,:);
+                EKG = EKG/range(EKG) * range(comp.trial{trial2plot}(i_c,:));
+                plot(comp.time{trial2plot},EKG,'r:')
+                title(sprintf('Comp %d',i_c))
+                xl = xlim;yl = ylim;
+                if i_c == 1
+                    text(xl(1),yl(2)+diff(yl)/2,[fs(i_f).sub,' ', fs(i_f).task,' ', fs(i_f).run], 'fontsize',18);
+                end
+                toprint = removefields(fs(i_f).CARACAS.meas(i_c),{'Ampl_var'});
+                fields = fieldnames(toprint);
+                threshs_min = [0 0 0 0 0 0 2 0 0 35];
+                threshs_max = [1/3 1/3 1/3 1/3 1/3 1/3 inf 1/3 1/3 90];
+                for i = 1:numel(fields)
+                    strtitle = [fields{i} ' = ' num2str(toprint.(fields{i}),2)];
+                    c = 'k';
+                    c = ifelse(toprint.(fields{i}) < threshs_min(i),'r',c);
+                    c = ifelse(toprint.(fields{i}) > threshs_max(i),'r',c);
+                    text(xl(2),yl(2)-i*diff(yl)/10,strtitle,'HorizontalAlignment','left','VerticalAlignment','baseline','FontSize',6, 'Interpreter','none', 'color',c)
+                end
+                % text(xl(2),yl(2),strtitle,'HorizontalAlignment','left','VerticalAlignment','baseline','FontSize',6, 'Interpreter','none')
+                set(gca,'position',get(gca,'position') .* [1 1  .80 1])
+                if fs(i_f).CARACAS.rej(i_c)
+                    set(gca,'XColor','r');
+                end
+                if fs(i_f).MANUAL.rej(i_c)
+                    set(gca,'YColor','r');
+                end
             else
                 h = subplot(12,10,i_c+10*(floor((i_c-1)/10)));
                 cfg = [];
@@ -47,10 +82,12 @@ for i_f = 1:numel(fs)
                 ft_topoplotIC(cfg,comp)
 
                 h = subplot(12,10,i_c+10*(floor((i_c-1)/10))+10);
-                plot(comp.time{1},comp.trial{1}(i_c,:))
+                plot(comp.time{trial2plot},comp.trial{trial2plot}(i_c,:))
             end
         end
         drawnow
+        %%
+        
         saveas(gcf,outpng)
         close(gcf)
     end

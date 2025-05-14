@@ -3,10 +3,10 @@
 #SBATCH --partition=medium
 #SBATCH --time=1:00:00
 #SBATCH --nodes=8
-#SBATCH --job-name=Chabaoum
-#SBATCH --output=/network/iss/cenir/analyse/meeg/CARACAS/Test_Max/logs/log-%a
-#SBATCH --error=/network/iss/cenir/analyse/meeg/CARACAS/Test_Max/logs/err/err-%a
-#SBATCH --array=1-375
+#SBATCH --job-name=Chabaoum2
+#SBATCH --output=/network/iss/cenir/analyse/meeg/CARACAS/Test_Max/ds003690/derivatives/CardiClassif/logs/log-%a
+#SBATCH --error=/network/iss/cenir/analyse/meeg/CARACAS/Test_Max/ds003690/derivatives/CardiClassif/logs/err/err-%a
+#SBATCH --array=38-375
 
 echo started on $HOSTNAME
 date
