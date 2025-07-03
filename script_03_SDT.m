@@ -1,48 +1,132 @@
 
-setpath_ds003690
 
+% clear all
+% close all
+
+%% !!!!! USER CHOOSE PARAMETERS !!!!!
+
+which_data = '_SASICA'; %''; %'_30comp';%   //
+
+nb_IC_of_interest = 'all'; % 'all' // '10';%
+
+which_col_in_csv = '_sure'; % '' // '_sure' // 'rej_noisy'
+
+compare_truth = 'SASICARACAS';
+compare_with = 'ICLabel'; %'SASICARACAS'; % 'CARACAS'; % 'CORR';
+
+
+%% Path and load data
+
+setpath_ds003690
 
 load(fullfile(dirout,'AllFilesAndScoresList.mat'))
 
 if ispc
-    for i = 1:numel(fs)
+    for i_f = 1:numel(fs)
         fields = {'name', 'compf','eegf'};
         for j = 1:numel(fields)
-            fs(i).(fields{j}) = strrep(fs(i).(fields{j}),'/network','\');
-            fs(i).(fields{j}) = strrep(fs(i).(fields{j}),'/','\');
+            fs(i_f).(fields{j}) = strrep(fs(i_f).(fields{j}),'/network','\');
+            fs(i_f).(fields{j}) = strrep(fs(i_f).(fields{j}),'/','\');
         end
     end
 end
-%%
 
-CORRrej = [];CARACASrej = [];SASICARACASrej = [];
-for i = 1:numel(fs)
-    CORRrej(i,:) = fs(i).CORR.rej;
-    CARACASrej(i,:) = fs(i).CARACAS.rej;
-    % CARACASrej(i,:) = [fs(i).CARACAS.meas.PQ] > 1/3;
-    % SASICARACASrej(i,:) = fs(i).SASICARACAS.rej;
-    MANUALrej(i,:) = fs(i).MANUAL.rej;
+
+% %% Plot hist to find thresholds
+%
+%
+% all_metric_of_interest = [];
+% for i_f = 1:numel(fs)
+%     all_metric_of_interest(i_f,:) = [fs(i_f).CARACAS.meas.bpm]; % .sk // RR // Rampl // bpm // ku
+%     allrej(i_f,:)= [fs(i_f).MANUAL.rej];
+% end
+%
+% nu_metric = all_metric_of_interest(allrej);
+% nunu_metric = all_metric_of_interest(~allrej);
+% figure;
+% h1 = histogram(nu_metric, 'Normalization', 'probability');
+% hold on
+% h2 = histogram(nunu_metric, 'Normalization', 'probability'); % 'NumBins', 1000,
+% hold on;
+% xline(35, 'r--', 'LineWidth', 2);
+% xline(95, 'r--', 'LineWidth', 2);
+% xlabel('bpm')
+% ylabel('% of cardiac and non-cardiac IC')
+% legend([h1, h2], {'Cardiac IC', 'Non-cardiac IC'}, 'Location', 'best');
+% set(gca, 'FontSize', 38);
+%
+
+
+%% Overwrite CARACAS to test specific thresholds for each variable
+
+
+%%% Adapt thresholds here
+cfg_CARACAS = [];
+cfg_CARACAS.thresh_sk = 1;
+cfg_CARACAS.thresh_ku = [5 100];
+cfg_CARACAS.thresh_PQ = 1/3;
+cfg_CARACAS.thresh_RR = 1/3;
+cfg_CARACAS.thresh_Rampl = .25;
+cfg_CARACAS.thresh_bpm = [35 100];
+
+cfg_CARACAS.prctl_RR = [0 70];
+cfg_CARACAS.prctl_PQ = [15 85];
+cfg_CARACAS.prctl_Rampl = [15 85];
+
+truthrej = NaN(numel(fs),size(fs(1).CORR.rej,2));
+withrej = truthrej;
+
+for i_f = 1:numel(fs)
+    if strcmp(compare_truth,'MANUAL')
+        truthrej(i_f,:) = fs(i_f).(compare_truth).(['rej' which_col_in_csv]);
+    elseif ~isempty(regexp(compare_truth,'CARACAS', 'once'))
+        truthrej(i_f,:) = rethresh(withrej(i_f,:),fs(i_f).(compare_truth),cfg_CARACAS);
+    else
+
+        truthrej(i_f,:) = fs(i_f).(compare_truth).rej;
+    end
+
+    withrej(i_f,:) = fs(i_f).(compare_with).rej;
+
+    if ~isempty(regexp(compare_with,'CARACAS', 'once'))
+
+        withrej(i_f,:) = rethresh(withrej(i_f,:),fs(i_f).(compare_with),cfg_CARACAS);
+
+    end
 end
-%%
+
+
+
+%% Plot and performances
+
+% Plot the two figures on the top (MANUAL and CARACAS)
 figure(595);clf
-set(gcf,'UserData',fs)
+set(gcf,'UserData',struct('fs',fs, 'compare_with', compare_with, 'compare_truth',compare_truth))
 subplot(321)
-hi = imagesc(MANUALrej');
-title('MANUAL')
+hi = imagesc(truthrej');
+title(compare_truth)
 set(hi,"ButtonDownFcn",@plotit);
 subplot(322);
-hi = imagesc(CARACASrej');
-title('CARACAS')
+hi = imagesc(withrej');
+title(compare_with)
 set(hi,"ButtonDownFcn",@plotit);
 
 subplot(3,2,[3 6]);
-toplot = NaN(size(MANUALrej));
-toplot(MANUALrej & CARACASrej) = 1;
-toplot(MANUALrej & ~ CARACASrej) = 2;
-toplot(~MANUALrej & ~CARACASrej) = 3;
-toplot(~MANUALrej & CARACASrej) = 4;
+toplot = NaN(size(truthrej));
+toplot(truthrej & withrej) = 1;     % Hit
+toplot(truthrej & ~ withrej) = 2;   % Miss
+toplot(~truthrej & ~withrej) = 3;   % CR
+toplot(~truthrej & withrej) = 4;    % FA
 names = {'Hit','Miss','CR','FA'};
 
+
+% Select only a subset of IC
+if ~ strcmp(nb_IC_of_interest, 'all')
+    toplot = toplot(:,1:str2num(nb_IC_of_interest));
+end
+
+
+% Plot overlaping the two (with Hit, Miss, FA, CR)
 hi = imagesc(toplot');
 vline(1:numel(fs),':k','pickableparts','none')
 hline(1:size(toplot,2),':k','pickableparts','none')
@@ -53,13 +137,45 @@ h = colorbar();
 set(h,'YTick',1:4,'yticklabel',names)
 
 
+%%%% Compute perf metrics
+% Sensitivity = Hit / (Hit + Miss)
+Sensitivity = sum(toplot == 1) / (sum(toplot== 1) + sum(toplot == 2))
+% Specificity = CR  / (CR + FA)
+Specificity = sum(toplot == 3) / (sum(toplot== 3) + sum(toplot == 4))
+Balanced_accuracy = (Sensitivity + Specificity) / 2
+
+xlab = sprintf('Sensitivity = %0.3g     Specificity = %0.3g     Balanced Acc = %0.3g', Sensitivity, Specificity, Balanced_accuracy);
+xlabel(xlab)
+% Weighted_accuracy = 0.25*Sensitivity + 0.75*Specificity
+
+% Accuracy = ( sum(toplot == 1) + sum(toplot == 3) ) / (sum(toplot == 1) + sum(toplot == 2) + sum(toplot == 3) + sum(toplot == 4) )
 
 
 
+%%%% Display parameters
+% Algo
+disp(['Ground truth: ' compare_truth])
+disp(['Automatic classifier: ' compare_with])
 
+% Nb of IC
+fprintf('Nb of IC per subject: %d (%s)\n',size(toplot,2),  nb_IC_of_interest)
+
+% Which col of the csv
+if isempty(which_col_in_csv)
+    disp('Cardiac IC tested: ALL (sure + noisy)')
+else
+    disp(['Cardiac IC tested: ' which_col_in_csv])
+end
+
+
+%% Function to interact with the plot
 function plotit(src,evt)
 
-fs = get(gcf,'UserData');
+tmp = get(gcf,'UserData');
+fs = tmp.fs;
+compare_with = tmp.compare_with;
+compare_truth = tmp.compare_truth;
+
 p = get(gca,'CurrentPoint');
 icmp = round(p(1,2));
 ids = round(p(1,1));
@@ -92,20 +208,55 @@ plot(comp.time{1},EKG,'r:')
 
 xl = xlim;yl = ylim;
 
-toprint = removefields(fs(ids).CARACAS.meas(icmp),{'Ampl_var'});
-fields = fieldnames(toprint);
-threshs_min = [0 0 0 0 0 0 2 0 0 35];
-threshs_max = [1/3 1/3 1/3 1/3 1/3 1/3 inf 1/3 1/3 90];
-for i = 1:numel(fields)
-    strtitle = [fields{i} ' = ' num2str(toprint.(fields{i}),2)];
-    c = 'k';
-    c = ifelse(toprint.(fields{i}) < threshs_min(i),'r',c);
-    c = ifelse(toprint.(fields{i}) > threshs_max(i),'r',c);
-    x = xl(1)+(diff(xl)/3)*rem(i-1,round(numel(fields)/3)) +1;
-    y = yl(1)-(floor((i)/(numel(fields)/3))+1)*diff(yl)/20-diff(yl)/10;
-    text(x,y,strtitle,'HorizontalAlignment','left','VerticalAlignment','baseline','FontSize',8, 'Interpreter','none', 'color',c)
+switch compare_with
+    case 'CARACAS'
+        toprint = removefields(fs(ids).CARACAS.meas(icmp),{'Ampl_var'});
+        fields = fieldnames(toprint);
+        threshs_min = [0 0 0 0 0 0 2 5 0 0 35];
+        threshs_max = [1/3 1/3 1/3 1/3 1/3 1/3 inf 100 1/3 1/3 90];
+        for i = 1:numel(fields)
+            strtitle = [fields{i} ' = ' num2str(toprint.(fields{i}),2)];
+            c = 'k';
+            c = ifelse(toprint.(fields{i}) < threshs_min(i),'r',c);
+            c = ifelse(toprint.(fields{i}) > threshs_max(i),'r',c);
+            x = xl(1)+(diff(xl)/3)*rem(i-1,round(numel(fields)/3)) +1;
+            y = yl(1)-(floor((i)/(numel(fields)/3))+1)*diff(yl)/20-diff(yl)/10;
+            text(x,y,strtitle,'HorizontalAlignment','left','VerticalAlignment','baseline','FontSize',8, 'Interpreter','none', 'color',c)
+        end
+        title([ifelse(fs(ids).CARACAS.rej(icmp),'CARACAS ',''),ifelse(fs(ids).MANUAL.rej(icmp), ' MANUAL ' ,'')])
+    case 'SASICARACAS'
+        toprint = fs(ids).SASICARACAS.meas(icmp);
+        cfg = fs(ids).SASICARACAS.cfg;
+        fields = fieldnames(toprint);
+        for i = 1:numel(fields)
+            strtitle = [fields{i} ' = ' num2str(toprint.(fields{i}),2)];
+            c = 'k';
+            if isscalar(cfg.(['thresh_' fields{i}]))
+                cfg.(['thresh_' fields{i}]) = [0 cfg.(['thresh_' fields{i}])];
+            end
+            c = ifelse(toprint.(fields{i}) < cfg.(['thresh_' fields{i}])(1),'r',c);
+            c = ifelse(toprint.(fields{i}) > cfg.(['thresh_' fields{i}])(2),'r',c);
+            x = xl(1)+(diff(xl)/3)*rem(i-1,round(numel(fields)/3)) +1;
+            y = yl(1)-(floor((i)/(numel(fields)/3))+1)*diff(yl)/20-diff(yl)/10;
+            text(x,y,strtitle,'HorizontalAlignment','left','VerticalAlignment','baseline','FontSize',8, 'Interpreter','none', 'color',c)
+        end
+    case 'ICLabel'
+        classes = fs(ids).ICLabel.meas.classes;
+        classifications = fs(ids).ICLabel.meas.classifications(icmp,:);
+        for i = 1:numel(classes)
+            strtitle = [classes{i} ' = ' num2str(classifications(i),2)];
+            c = 'k';
+            % Highlight the class with highest probability in red
+            if classifications(i) == max(classifications)
+                c = 'r';
+            end
+            x = xl(1)+(diff(xl)/3)*rem(i-1,round(numel(classes)/3)) +1;
+            y = yl(1)-(floor((i)/(numel(classes)/3))+1)*diff(yl)/20-diff(yl)/10;
+            text(x,y,strtitle,'HorizontalAlignment','left','VerticalAlignment','baseline','FontSize',8, 'Interpreter','none', 'color',c)
+        end
+        [~, max_idx] = max(classifications);
+        title(['ICLabel: ' classes{max_idx} ' (' num2str(classifications(max_idx),2) ')'])
 end
-title([ifelse(fs(ids).CARACAS.rej(icmp),'CARACAS ',''),ifelse(fs(ids).MANUAL.rej(icmp), ' MANUAL ' ,'')])
 
 drawnow
 
@@ -121,31 +272,50 @@ comp.trial{1} = comp.trial{1}(icmp,:);
 comp.label = comp.label(icmp);
 comp.topolabel = comp.topolabel(icmp);
 
-cfg = [];
-cfg.method_chosen = 'absolute_threshold';   %'absolute_threshold' (method 1) or 'mean_std' (method 2)
-cfg.plot_heart_IC = 0;                      % 1 or 0 (to plot the IC labelled as cardiac)
-cfg.path_output = []; % path where you want to save i) the distribution of the scores (among all IC) and ii) timecourse of the identified cardiac IC (used only if plot_heart_IC == 1)
-cfg.file_info = myfileparts(fs(ids).name,'f');% name of your recording (to add it in the name of your plot files) (used only if plot_heart_IC == 1)
-cfg.nb_IC_wanted = 3;                       % number of IC selected for each metric (kurtosis, skewness...) [default: 3, to select the top 3 IC for each metric]
-cfg.bpm_min = 45;                           % expected heart beat per min, for sanity check [default: 45 and 90]
-cfg.bpm_max = 90;
-cfg.threshold_cond_IC_method1 = .5;         % minimum proportion of conditions that must be met in order that an IC could be considered as a potential heart IC [default: 0.5, so if method_chosen == 'absolute_threshold', an IC must be in the top 3 for at least 50% of the metrics]
-cfg.threshold_std_method2 = 2.5;            % if method_chosen == 'mean_std', an IC will be considered as a potential heart IC if its proportion of conditions met (i.e., its score) is above mean(all_score) + threshold_std_method2 * std(all_score) [default: 2.5]
-cfg.min_recording_duration_sec = 20;        % minimum duration (in sec) of the IC timecourse (default: 20]
-cfg.mini_bouts_duration_for_SignalAmplRange = 10; % for sanity check (avoids false positive): the time course of a potential heart IC must be ~regular. The timecourse will be divided into mini-segments of this duration, and we will check that the amplitude between these mini-bouts is ~similar. [default: 10]
-cfg.threshold_regularity_signal_minmax = 1.5; % For each mini-bout, the averaged signal amplitude is computed. The IC timecourse will be considered as irregular if: (max(Mean_Amp_minibout) - min(Mean_Amp_minibout)) / min(Mean_Amp_minibout) > threshold_regularity_signal_minmax [default: 1.5]
-
-[isCardiac, meas] = CARACAS(cfg, comp);
-
 ids
 
 corr = fs(ids).CORR.c(icmp)
 
-meas
-isCardiac
+% fs(ids).(compare_truth).meas(icmp)
+% fs(ids).(compare_with).meas(icmp)
+
 % cfg = [];
 % cfg.viewmode  = 'component';
 % cfg.layout    = layout;
 % ft_databrowser(cfg, comp);
 
+end
+function withrej = rethresh(withrej, CARACAS_struct, cfg_CARACAS)
+
+for i_c = 1:size(withrej,2)
+    NotCardiac = 0;
+    % Skewness
+    if CARACAS_struct.meas(i_c).sk < cfg_CARACAS.thresh_sk
+        NotCardiac = 1;
+    end
+
+
+    % RR
+    if CARACAS_struct.meas(i_c).RR > cfg_CARACAS.thresh_RR
+        NotCardiac = 1;
+    end
+
+    % bpm
+    if CARACAS_struct.meas(i_c).bpm < cfg_CARACAS.thresh_bpm(1) || CARACAS_struct.meas(i_c).bpm > cfg_CARACAS.thresh_bpm(2)
+        NotCardiac = 1;
+    end
+
+
+    % Kurtosis
+    if CARACAS_struct.meas(i_c).ku < cfg_CARACAS.thresh_ku(1) || CARACAS_struct.meas(i_c).ku > cfg_CARACAS.thresh_ku(2)
+        NotCardiac = 1;
+    end
+
+    % Rampl
+    if CARACAS_struct.meas(i_c).Rampl > cfg_CARACAS.thresh_Rampl
+        NotCardiac = 1;
+    end
+
+    withrej(1,i_c) = ~ NotCardiac;
+end
 end
