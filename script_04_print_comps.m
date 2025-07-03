@@ -3,10 +3,12 @@ function script_04_print_comps(i_f)
 if not(exist('i_f','var'))
     i_f = 1;
 end
+which_data = '_SASICA';
 setpath_ds003690
 
 dont_plot_topos = 1;
 trial2plot = 2;
+decorate = 0;
 
 mymkdir(fullfile(dirout,'AllCompImages'))
 
@@ -51,24 +53,36 @@ for i_f = i_f%1:numel(fs)
                 if i_c == 1
                     text(xl(1),yl(2)+diff(yl)/2,[fs(i_f).sub,' ', fs(i_f).task,' ', fs(i_f).run], 'fontsize',18);
                 end
-                toprint = removefields(fs(i_f).CARACAS.meas(i_c),{'Ampl_var'});
-                fields = fieldnames(toprint);
-                threshs_min = [0 0 0 0 0 0 2 0 0 35];
-                threshs_max = [1/3 1/3 1/3 1/3 1/3 1/3 inf 1/3 1/3 90];
-                for i = 1:numel(fields)
-                    strtitle = [fields{i} ' = ' num2str(toprint.(fields{i}),2)];
-                    c = 'k';
-                    c = ifelse(toprint.(fields{i}) < threshs_min(i),'r',c);
-                    c = ifelse(toprint.(fields{i}) > threshs_max(i),'r',c);
-                    text(xl(2),yl(2)-i*diff(yl)/10,strtitle,'HorizontalAlignment','left','VerticalAlignment','baseline','FontSize',6, 'Interpreter','none', 'color',c)
-                end
-                % text(xl(2),yl(2),strtitle,'HorizontalAlignment','left','VerticalAlignment','baseline','FontSize',6, 'Interpreter','none')
-                set(gca,'position',get(gca,'position') .* [1 1  .80 1])
-                if fs(i_f).CARACAS.rej(i_c)
-                    set(gca,'XColor','r');
-                end
-                if fs(i_f).MANUAL.rej(i_c)
-                    set(gca,'YColor','r');
+                if decorate
+                    toprint = removefields(fs(i_f).CARACAS.meas(i_c),{'Ampl_var'});
+                    fields = fieldnames(toprint);
+                    threshs = [];
+                    threshs.PQ = [0 1/3];
+                    threshs.QS = [0 1/3];
+                    threshs.ST = [0 1/3];
+                    threshs.PR = [0 1/3];
+                    threshs.RT = [0 1/3];
+                    threshs.PT = [0 1/3];
+                    threshs.sk = [2 inf];
+                    threshs.ku = [2 inf];
+                    threshs.RR = [0 1/3];
+                    threshs.Rampl = [0 1/3];
+                    threshs.bpm = [35 90];
+                    for i = 1:numel(fields)
+                        strtitle = [fields{i} ' = ' num2str(toprint.(fields{i}),2)];
+                        c = 'k';
+                        c = ifelse(toprint.(fields{i}) < threshs.(fields{i})(1),'r',c);
+                        c = ifelse(toprint.(fields{i}) > threshs.(fields{i})(2),'r',c);
+                        text(xl(2),yl(2)-i*diff(yl)/10,strtitle,'HorizontalAlignment','left','VerticalAlignment','baseline','FontSize',6, 'Interpreter','none', 'color',c)
+                    end
+                    % text(xl(2),yl(2),strtitle,'HorizontalAlignment','left','VerticalAlignment','baseline','FontSize',6, 'Interpreter','none')
+                    set(gca,'position',get(gca,'position') .* [1 1  .80 1])
+                    if fs(i_f).CARACAS.rej(i_c)
+                        set(gca,'XColor','r');
+                    end
+                    if isfield(fs(i_f), 'MANUAL') && fs(i_f).MANUAL.rej(i_c)
+                        set(gca,'YColor','r');
+                    end
                 end
             else
                 h = subplot(12,10,i_c+10*(floor((i_c-1)/10)));
