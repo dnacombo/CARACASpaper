@@ -1,7 +1,7 @@
 function script_02_ds003690_precomp(i_f)
 
 if not(exist('i_f','var'))
-    i_f = 1;
+    i_f = 1:375;
 end
 plot_epochs = 0;
 plot_psd = 0;
@@ -10,13 +10,18 @@ force_recomp = 0;
 
 corthresh = .6; % correlation threshold component time course with ECG
 
+which_data = '_SASICA'; % '' // '_30comp'
+
 setpath_ds003690
 ft_warning('off','FieldTrip:dataContainsNaN')
 
-%
-% fs = flister('sub.*/(?<sub>sub-[^_]+)_(?<task>task-[^_]+)_(?<run>run-[^_]+)_(?<mod>eeg).set','dir',dirbids);
-% save(fullfile(dirout,'AllFilesAndScoresList.mat'),'fs')
-load(fullfile(dirout,'AllFilesAndScoresList.mat'))
+
+if not(exist(fullfile(dirout,'AllFilesAndScoresList.mat'), 'file'))
+    fs = flister('sub.*/(?<sub>sub-[^_]+)_(?<task>task-[^_]+)_(?<run>run-[^_]+)_(?<mod>eeg).set','dir',dirbids);
+    save(fullfile(dirout,'AllFilesAndScoresList.mat'),'fs')
+else
+    load(fullfile(dirout,'AllFilesAndScoresList.mat'), 'fs')
+end
 
 % fs = flister('meg.fif', 'dir',fullfile(dirroot), 'recurse',0);
 % fs = fs(1);
@@ -96,6 +101,7 @@ for i_f = i_f%1:numel(fs)
         %%
         cfg = [];
         cfg.channel = 'EEG';
+        % cfg.numcomponent = 30;
 
         rng(123);
         comp = ft_componentanalysis(cfg,data);
@@ -151,15 +157,20 @@ for i_f = i_f%1:numel(fs)
     end
     comp_continu = ft_redefinetrial(cfgtmp, comp);
 
-    % %% CARACAS in SASICA
-    % 
-    % cfg_SASICA.CARACAS.enable = 1;
-    % cfg_SASICA.opts.noplot = 1;
-    % cfg_SASICA.opts.noplotselectcomps = 1;
-    % 
-    % SASICCARACAS = ft_SASICA(cfg_SASICA, comp_continu, data);
-    % fs(i_f).SASICARACAS.meas = SASICCARACAS.reject.SASICA.icaCARACAS;
-    % fs(i_f).SASICARACAS.rej = SASICCARACAS.reject.gcompreject;
+    %% CARACAS in SASICA
+    cfg = [];
+    cfg.channel = 'eeg';
+    EEG = comp2eeglab(cfg, comp, ft_selectdata(cfg,data));
+
+    cfg_SASICA = [];
+    cfg_SASICA.CARACAS.enable = 1;
+    cfg_SASICA.opts.noplot = 1;
+    cfg_SASICA.opts.noplotselectcomps = 1;
+
+    SASICCARACAS = eeg_SASICA(EEG,cfg_SASICA);
+    fs(i_f).SASICARACAS.cfg = SASICCARACAS.reject.SASICA.icaCARACAS_cfg;
+    fs(i_f).SASICARACAS.meas = SASICCARACAS.reject.SASICA.icaCARACAS;
+    fs(i_f).SASICARACAS.rej = SASICCARACAS.reject.gcompreject;
     
     %% CARACAS
 
@@ -181,6 +192,19 @@ for i_f = i_f%1:numel(fs)
     fs(i_f).CARACAS.meas = meas;
     fs(i_f).CARACAS.rej = false(1,numel(comp.label));
     fs(i_f).CARACAS.rej(tmp) = 1;
+
+
+    %% IClabel
+    activate_matconvnet();
+    EEG = pop_iclabel(EEG,'default');
+    ICLabel_results = EEG.etc.ic_classification.ICLabel;
+    fs(i_f).ICLabel.meas = struct();
+    fs(i_f).ICLabel.meas.classes = ICLabel_results.classes;
+    fs(i_f).ICLabel.meas.classifications = ICLabel_results.classifications;
+    cls = fs(i_f).ICLabel.meas.classifications(:,~strcmp(fs(i_f).ICLabel.meas.classes,'Heart'));
+    m = max(cls,[],2);
+    tmp = fs(i_f).ICLabel.meas.classifications(:,strcmp(fs(i_f).ICLabel.meas.classes,'Heart'));
+    fs(i_f).ICLabel.rej = tmp' > m';
 
 
     %% correlation with EKG
