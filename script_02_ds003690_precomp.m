@@ -3,10 +3,15 @@ function script_02_ds003690_precomp(i_f)
 if not(exist('i_f','var'))
     i_f = 1:375;
 end
-plot_epochs = 0;
-plot_psd = 0;
-plot_comp = 0;
-force_recomp = 0;
+plot_epochs     = 0;
+plot_psd        = 0;
+plot_comp       = 0;
+force_recomp    = 0;
+
+update_CARACAS      = 1;
+update_SASICARACAS  = 1;
+update_ICLabel      = 1;
+update_CORR         = 1;
 
 corthresh = .6; % correlation threshold component time course with ECG
 
@@ -28,7 +33,7 @@ end
 
 % remove sub 1 with strange cardiac rhytms
 % fs = flist_select(fs,'sub', 'sub-AB10', 'inv');
-%% 
+%%
 for i_f = i_f%1:numel(fs)
     fprintf('#############################################\n')
     fprintf('######### %s_%s_%s #########\n',fs(i_f).sub,fs(i_f).task,fs(i_f).run)
@@ -157,81 +162,86 @@ for i_f = i_f%1:numel(fs)
     end
     comp_continu = ft_redefinetrial(cfgtmp, comp);
 
-    %% CARACAS in SASICA
-    cfg = [];
-    cfg.channel = 'eeg';
-    EEG = comp2eeglab(cfg, comp, ft_selectdata(cfg,data));
+    if update_SASICARACAS
+        %% CARACAS in SASICA
+        cfg = [];
+        cfg.channel = 'eeg';
+        EEG = comp2eeglab(cfg, comp, ft_selectdata(cfg,data));
 
-    cfg_SASICA = [];
-    cfg_SASICA.CARACAS.enable = 1;
-    cfg_SASICA.opts.noplot = 1;
-    cfg_SASICA.opts.noplotselectcomps = 1;
+        cfg_SASICA = [];
+        cfg_SASICA.CARACAS.enable = 1;
+        cfg_SASICA.opts.noplot = 1;
+        cfg_SASICA.opts.noplotselectcomps = 1;
 
-    SASICCARACAS = eeg_SASICA(EEG,cfg_SASICA);
-    fs(i_f).SASICARACAS.cfg = SASICCARACAS.reject.SASICA.icaCARACAS_cfg;
-    fs(i_f).SASICARACAS.meas = SASICCARACAS.reject.SASICA.icaCARACAS;
-    fs(i_f).SASICARACAS.rej = SASICCARACAS.reject.gcompreject;
-    
-    %% CARACAS
+        SASICCARACAS = eeg_SASICA(EEG,cfg_SASICA);
+        fs(i_f).SASICARACAS.cfg = SASICCARACAS.reject.SASICA.icaCARACAS_cfg;
+        fs(i_f).SASICARACAS.meas = SASICCARACAS.reject.SASICA.icaCARACAS;
+        fs(i_f).SASICARACAS.rej = SASICCARACAS.reject.gcompreject;
+    end
+    if update_CARACAS
+        %% CARACAS
 
-    cfg = [];
-    cfg.method_chosen = 'absolute_threshold';   %'absolute_threshold' (method 1) or 'mean_std' (method 2)
-    cfg.plot_heart_IC = 0;                      % 1 or 0 (to plot the IC labelled as cardiac)
-    cfg.path_output = this_outdir; % path where you want to save i) the distribution of the scores (among all IC) and ii) timecourse of the identified cardiac IC (used only if plot_heart_IC == 1)
-    cfg.file_info = myfileparts(fs(i_f).name,'f');% name of your recording (to add it in the name of your plot files) (used only if plot_heart_IC == 1)
-    cfg.nb_IC_wanted = 3;                       % number of IC selected for each metric (kurtosis, skewness...) [default: 3, to select the top 3 IC for each metric]
-    cfg.bpm_min = 45;                           % expected heart beat per min, for sanity check [default: 45 and 90]
-    cfg.bpm_max = 90;
-    cfg.threshold_cond_IC_method1 = .5;         % minimum proportion of conditions that must be met in order that an IC could be considered as a potential heart IC [default: 0.5, so if method_chosen == 'absolute_threshold', an IC must be in the top 3 for at least 50% of the metrics]
-    cfg.threshold_std_method2 = 2.5;            % if method_chosen == 'mean_std', an IC will be considered as a potential heart IC if its proportion of conditions met (i.e., its score) is above mean(all_score) + threshold_std_method2 * std(all_score) [default: 2.5]
-    cfg.min_recording_duration_sec = 20;        % minimum duration (in sec) of the IC timecourse (default: 20]
-    cfg.mini_bouts_duration_for_SignalAmplRange = 10; % for sanity check (avoids false positive): the time course of a potential heart IC must be ~regular. The timecourse will be divided into mini-segments of this duration, and we will check that the amplitude between these mini-bouts is ~similar. [default: 10]
-    cfg.threshold_regularity_signal_minmax = 1.5; % For each mini-bout, the averaged signal amplitude is computed. The IC timecourse will be considered as irregular if: (max(Mean_Amp_minibout) - min(Mean_Amp_minibout)) / min(Mean_Amp_minibout) > threshold_regularity_signal_minmax [default: 1.5]
+        cfg = [];
+        cfg.method_chosen = 'absolute_threshold';   %'absolute_threshold' (method 1) or 'mean_std' (method 2)
+        cfg.plot_heart_IC = 0;                      % 1 or 0 (to plot the IC labelled as cardiac)
+        cfg.path_output = this_outdir; % path where you want to save i) the distribution of the scores (among all IC) and ii) timecourse of the identified cardiac IC (used only if plot_heart_IC == 1)
+        cfg.file_info = myfileparts(fs(i_f).name,'f');% name of your recording (to add it in the name of your plot files) (used only if plot_heart_IC == 1)
+        cfg.nb_IC_wanted = 3;                       % number of IC selected for each metric (kurtosis, skewness...) [default: 3, to select the top 3 IC for each metric]
+        cfg.bpm_min = 45;                           % expected heart beat per min, for sanity check [default: 45 and 90]
+        cfg.bpm_max = 90;
+        cfg.threshold_cond_IC_method1 = .5;         % minimum proportion of conditions that must be met in order that an IC could be considered as a potential heart IC [default: 0.5, so if method_chosen == 'absolute_threshold', an IC must be in the top 3 for at least 50% of the metrics]
+        cfg.threshold_std_method2 = 2.5;            % if method_chosen == 'mean_std', an IC will be considered as a potential heart IC if its proportion of conditions met (i.e., its score) is above mean(all_score) + threshold_std_method2 * std(all_score) [default: 2.5]
+        cfg.min_recording_duration_sec = 20;        % minimum duration (in sec) of the IC timecourse (default: 20]
+        cfg.mini_bouts_duration_for_SignalAmplRange = 10; % for sanity check (avoids false positive): the time course of a potential heart IC must be ~regular. The timecourse will be divided into mini-segments of this duration, and we will check that the amplitude between these mini-bouts is ~similar. [default: 10]
+        cfg.threshold_regularity_signal_minmax = 1.5; % For each mini-bout, the averaged signal amplitude is computed. The IC timecourse will be considered as irregular if: (max(Mean_Amp_minibout) - min(Mean_Amp_minibout)) / min(Mean_Amp_minibout) > threshold_regularity_signal_minmax [default: 1.5]
 
-    [tmp, meas] = CARACAS(cfg, comp_continu);
-    fs(i_f).CARACAS.meas = meas;
-    fs(i_f).CARACAS.rej = false(1,numel(comp.label));
-    fs(i_f).CARACAS.rej(tmp) = 1;
+        [tmp, meas] = CARACAS(cfg, comp_continu);
+        fs(i_f).CARACAS.meas = meas;
+        fs(i_f).CARACAS.rej = false(1,numel(comp.label));
+        fs(i_f).CARACAS.rej(tmp) = 1;
+    end
 
+    if update_ICLabel
+        %% IClabel
+        % activate_matconvnet();
+        % EEG = pop_iclabel(EEG,'default');
+        % ICLabel_results = EEG.etc.ic_classification.ICLabel;
+        % fs(i_f).ICLabel.meas = struct();
+        % fs(i_f).ICLabel.meas.classes = ICLabel_results.classes;
+        % fs(i_f).ICLabel.meas.classifications = ICLabel_results.classifications;
+        cls = fs(i_f).ICLabel.meas.classifications(:,~strcmp(fs(i_f).ICLabel.meas.classes,'Heart'));
+        m = max(cls,[],2);
+        tmp = fs(i_f).ICLabel.meas.classifications(:,strcmp(fs(i_f).ICLabel.meas.classes,'Heart'));
+        fs(i_f).ICLabel.rej = tmp' > m';
+    end
 
-    %% IClabel
-    activate_matconvnet();
-    EEG = pop_iclabel(EEG,'default');
-    ICLabel_results = EEG.etc.ic_classification.ICLabel;
-    fs(i_f).ICLabel.meas = struct();
-    fs(i_f).ICLabel.meas.classes = ICLabel_results.classes;
-    fs(i_f).ICLabel.meas.classifications = ICLabel_results.classifications;
-    cls = fs(i_f).ICLabel.meas.classifications(:,~strcmp(fs(i_f).ICLabel.meas.classes,'Heart'));
-    m = max(cls,[],2);
-    tmp = fs(i_f).ICLabel.meas.classifications(:,strcmp(fs(i_f).ICLabel.meas.classes,'Heart'));
-    fs(i_f).ICLabel.rej = tmp' > m';
+    if update_CORR
+        %% correlation with EKG
 
+        EKGchan = chnb('ekg',data.label);
 
-    %% correlation with EKG
+        EKG = cat(2,data.trial{:});
+        EKG = EKG(EKGchan,:,:)';
+        ICs = cat(2,comp.trial{:})';
 
-    EKGchan = chnb('ekg',data.label);
+        c  = abs(corr(ICs,EKG))';
+        rej = c > corthresh ;
 
-    EKG = cat(2,data.trial{:});
-    EKG = EKG(EKGchan,:,:)';
-    ICs = cat(2,comp.trial{:})';
+        fs(i_f).CORR.c = c;
+        fs(i_f).CORR.rej = rej;
 
-    c  = abs(corr(ICs,EKG))';
-    rej = c > corthresh ;
+        %% SDT
+        fs(i_f).pC = sum(fs(i_f).CORR.rej == fs(i_f).CARACAS.rej) / numel(fs(i_f).CORR.rej);
+        fs(i_f).dp = PAL_SDT_MAFC_PCtoDP(fs(i_f).pC,numel(fs(i_f).CORR.rej));
+        fs(i_f).H = sum(fs(i_f).CORR.rej & fs(i_f).CARACAS.rej);
+        fs(i_f).FA = sum(~ fs(i_f).CORR.rej & fs(i_f).CARACAS.rej);
+    end
 
-    fs(i_f).CORR.c = c;
-    fs(i_f).CORR.rej = rej;
-
-    %% SDT
-    fs(i_f).pC = sum(fs(i_f).CORR.rej == fs(i_f).CARACAS.rej) / numel(fs(i_f).CORR.rej);
-    fs(i_f).dp = PAL_SDT_MAFC_PCtoDP(fs(i_f).pC,numel(fs(i_f).CORR.rej));
-    fs(i_f).H = sum(fs(i_f).CORR.rej & fs(i_f).CARACAS.rej);
-    fs(i_f).FA = sum(~ fs(i_f).CORR.rej & fs(i_f).CARACAS.rej);
-    
     % delete(lock)
-end
-f = fs(i_f);
-save(fullfile(dirout,f.sub,sprintf('%s_%s_%s_FilesAndScoresList.mat',f.sub, f.task, f.run)),'f')
+    f = fs(i_f);
+    save(fullfile(dirout,f.sub,sprintf('%s_%s_%s_FilesAndScoresList.mat',f.sub, f.task, f.run)),'f')
 
+end
 % %% ROC analysis
 % [X, Y, T, AUC] = perfcurve(double([fs.CORR]), double([fs.CARACAS]), 1);
 % figure(587934);clf
