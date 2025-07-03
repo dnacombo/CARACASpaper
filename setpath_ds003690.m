@@ -6,7 +6,10 @@ end
 dircode = fullfile(dirroot,'code');
 dirbids       = fullfile(dirroot,'ds003690');
 dirderiv = fullfile(dirbids,'derivatives');
-dirout = fullfile(dirderiv,'CardiClassif');
+
+
+dirout = fullfile(dirderiv,['CardiClassif' which_data]);
+
 
 
 addpath(fullfile(dircode,'MiscMatlab'))
@@ -30,6 +33,9 @@ addpath(fullfile(dircode,'Cardiac_IC_labelling'));
 addpath(fullfile(dircode,'Cardiac_IC_labelling', 'heart_functions'));
 
 cfg_SASICA = SASICA('getdefs');
-addpath(genpath(fullfile(dircode, "SASICA",'eeglab')))
+addpath(fullfile(dircode, "SASICA",'eeglab'))
+addpath(genpath(fullfile(dircode, "SASICA",'eeglab', 'functions')))
+addpath(fullfile(dircode, "SASICA",'eeglab', 'plugins', 'ICLabel'))
+addpath(fullfile(dircode, "SASICA",'eeglab', 'plugins', 'firfilt'))
 
 mymkdir(dirout)
