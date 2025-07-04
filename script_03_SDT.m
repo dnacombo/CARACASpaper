@@ -11,8 +11,8 @@ nb_IC_of_interest = 'all'; % 'all' // '10';%
 
 which_col_in_csv = '_sure'; % '' // '_sure' // 'rej_noisy'
 
-compare_truth = 'SASICARACAS';
-compare_with = 'ICLabel'; %'SASICARACAS'; % 'CARACAS'; % 'CORR';
+compare_truth = 'MANUAL';
+compare_with = 'CARACAS'; %'SASICARACAS'; % 'CARACAS'; % 'CORR';
 
 
 %% Path and load data
@@ -61,17 +61,9 @@ end
 
 
 %%% Adapt thresholds here
-cfg_CARACAS = [];
-cfg_CARACAS.thresh_sk = 1;
-cfg_CARACAS.thresh_ku = [5 100];
-cfg_CARACAS.thresh_PQ = 1/3;
-cfg_CARACAS.thresh_RR = 1/3;
-cfg_CARACAS.thresh_Rampl = .25;
-cfg_CARACAS.thresh_bpm = [35 100];
-
-cfg_CARACAS.prctl_RR = [0 70];
-cfg_CARACAS.prctl_PQ = [15 85];
-cfg_CARACAS.prctl_Rampl = [15 85];
+cfg_SASICA = SASICA('getdefs');
+cfg_CARACAS = cfg_SASICA.CARACAS;
+cfg_CARACAS.enable = 1;
 
 truthrej = NaN(numel(fs),size(fs(1).CORR.rej,2));
 withrej = truthrej;
@@ -80,18 +72,17 @@ for i_f = 1:numel(fs)
     if strcmp(compare_truth,'MANUAL')
         truthrej(i_f,:) = fs(i_f).(compare_truth).(['rej' which_col_in_csv]);
     elseif ~isempty(regexp(compare_truth,'CARACAS', 'once'))
-        truthrej(i_f,:) = rethresh(withrej(i_f,:),fs(i_f).(compare_truth),cfg_CARACAS);
+        truthrej(i_f,:) = CARACAS_rethresh(truthrej(i_f,:),fs(i_f).(compare_truth),cfg_CARACAS);
     else
-
         truthrej(i_f,:) = fs(i_f).(compare_truth).rej;
     end
 
-    withrej(i_f,:) = fs(i_f).(compare_with).rej;
 
     if ~isempty(regexp(compare_with,'CARACAS', 'once'))
 
-        withrej(i_f,:) = rethresh(withrej(i_f,:),fs(i_f).(compare_with),cfg_CARACAS);
-
+        withrej(i_f,:) = CARACAS_rethresh(withrej(i_f,:),fs(i_f).(compare_with),cfg_CARACAS);
+    else
+        withrej(i_f,:) = fs(i_f).(compare_with).rej;
     end
 end
 
@@ -284,38 +275,4 @@ corr = fs(ids).CORR.c(icmp)
 % cfg.layout    = layout;
 % ft_databrowser(cfg, comp);
 
-end
-function withrej = rethresh(withrej, CARACAS_struct, cfg_CARACAS)
-
-for i_c = 1:size(withrej,2)
-    NotCardiac = 0;
-    % Skewness
-    if CARACAS_struct.meas(i_c).sk < cfg_CARACAS.thresh_sk
-        NotCardiac = 1;
-    end
-
-
-    % RR
-    if CARACAS_struct.meas(i_c).RR > cfg_CARACAS.thresh_RR
-        NotCardiac = 1;
-    end
-
-    % bpm
-    if CARACAS_struct.meas(i_c).bpm < cfg_CARACAS.thresh_bpm(1) || CARACAS_struct.meas(i_c).bpm > cfg_CARACAS.thresh_bpm(2)
-        NotCardiac = 1;
-    end
-
-
-    % Kurtosis
-    if CARACAS_struct.meas(i_c).ku < cfg_CARACAS.thresh_ku(1) || CARACAS_struct.meas(i_c).ku > cfg_CARACAS.thresh_ku(2)
-        NotCardiac = 1;
-    end
-
-    % Rampl
-    if CARACAS_struct.meas(i_c).Rampl > cfg_CARACAS.thresh_Rampl
-        NotCardiac = 1;
-    end
-
-    withrej(1,i_c) = ~ NotCardiac;
-end
 end
