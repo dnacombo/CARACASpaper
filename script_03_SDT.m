@@ -7,12 +7,12 @@
 
 which_data = '_SASICA'; %''; %'_30comp';%   //
 
-nb_IC_of_interest = 'all'; % 'all' // '10';%
+nb_IC_of_interest = 'all'; %45;% 'all' // 
 
 which_col_in_csv = '_sure'; % '' // '_sure' // 'rej_noisy'
 
 compare_truth = 'MANUAL';
-compare_with = 'CARACAS'; %'SASICARACAS'; % 'CARACAS'; % 'CORR';
+compare_with = 'SASICARACAS'; %'SASICARACAS'; % 'CARACAS'; % 'CORR';
 
 
 %% Path and load data
@@ -113,7 +113,7 @@ names = {'Hit','Miss','CR','FA'};
 
 % Select only a subset of IC
 if ~ strcmp(nb_IC_of_interest, 'all')
-    toplot = toplot(:,1:str2num(nb_IC_of_interest));
+    toplot = toplot(:,1:nb_IC_of_interest);
 end
 
 
@@ -149,7 +149,7 @@ disp(['Ground truth: ' compare_truth])
 disp(['Automatic classifier: ' compare_with])
 
 % Nb of IC
-fprintf('Nb of IC per subject: %d (%s)\n',size(toplot,2),  nb_IC_of_interest)
+fprintf('Nb of IC per subject: %d (%d)\n',size(toplot,2),  nb_IC_of_interest)
 
 % Which col of the csv
 if isempty(which_col_in_csv)
