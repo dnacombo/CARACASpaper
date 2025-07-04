@@ -1,7 +1,7 @@
 function script_02_ds003690_precomp(i_f)
 
 if not(exist('i_f','var'))
-    i_f = 1:375;
+    i_f = 53;
 end
 plot_epochs     = 0;
 plot_psd        = 0;
@@ -168,7 +168,7 @@ for i_f = i_f%1:numel(fs)
         cfg.channel = 'eeg';
         EEG = comp2eeglab(cfg, comp, ft_selectdata(cfg,data));
 
-        cfg_SASICA = [];
+        cfg_SASICA = SASICA('getdefs');
         cfg_SASICA.CARACAS.enable = 1;
         cfg_SASICA.opts.noplot = 1;
         cfg_SASICA.opts.noplotselectcomps = 1;
@@ -203,12 +203,12 @@ for i_f = i_f%1:numel(fs)
 
     if update_ICLabel
         %% IClabel
-        % activate_matconvnet();
-        % EEG = pop_iclabel(EEG,'default');
-        % ICLabel_results = EEG.etc.ic_classification.ICLabel;
-        % fs(i_f).ICLabel.meas = struct();
-        % fs(i_f).ICLabel.meas.classes = ICLabel_results.classes;
-        % fs(i_f).ICLabel.meas.classifications = ICLabel_results.classifications;
+        activate_matconvnet();
+        EEG = pop_iclabel(EEG,'default');
+        ICLabel_results = EEG.etc.ic_classification.ICLabel;
+        fs(i_f).ICLabel.meas = struct();
+        fs(i_f).ICLabel.meas.classes = ICLabel_results.classes;
+        fs(i_f).ICLabel.meas.classifications = ICLabel_results.classifications;
         cls = fs(i_f).ICLabel.meas.classifications(:,~strcmp(fs(i_f).ICLabel.meas.classes,'Heart'));
         m = max(cls,[],2);
         tmp = fs(i_f).ICLabel.meas.classifications(:,strcmp(fs(i_f).ICLabel.meas.classes,'Heart'));
