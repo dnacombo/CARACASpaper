@@ -7,12 +7,12 @@
 
 which_data = '_SASICA'; %''; %'_30comp';%   //
 
-nb_IC_of_interest = 'all'; %45;% 'all' // 
+nb_IC_of_interest = 'all'; %55;%45;% 'all' // 
 
 which_col_in_csv = '_sure'; % '' // '_sure' // 'rej_noisy'
 
 compare_truth = 'MANUAL';
-compare_with = 'SASICARACAS'; %'SASICARACAS'; % 'CARACAS'; % 'CORR';
+compare_with = 'SASICARACAS'; %'CARACAS'; % 'CARACAS'; % 'CORR';
 
 
 %% Path and load data
@@ -92,7 +92,7 @@ end
 
 % Plot the two figures on the top (MANUAL and CARACAS)
 figure(595);clf
-set(gcf,'UserData',struct('fs',fs, 'compare_with', compare_with, 'compare_truth',compare_truth))
+set(gcf,'UserData',struct('fs',fs, 'compare_with', compare_with, 'compare_truth',compare_truth, 'cfg_CARACAS', cfg_CARACAS))
 subplot(321)
 hi = imagesc(truthrej');
 title(compare_truth)
@@ -166,6 +166,7 @@ tmp = get(gcf,'UserData');
 fs = tmp.fs;
 compare_with = tmp.compare_with;
 compare_truth = tmp.compare_truth;
+cfg_CARACAS = tmp.cfg_CARACAS;
 
 p = get(gca,'CurrentPoint');
 icmp = round(p(1,2));
@@ -203,33 +204,66 @@ switch compare_with
     case 'CARACAS'
         toprint = removefields(fs(ids).CARACAS.meas(icmp),{'Ampl_var'});
         fields = fieldnames(toprint);
-        threshs_min = [0 0 0 0 0 0 2 5 0 0 35];
-        threshs_max = [1/3 1/3 1/3 1/3 1/3 1/3 inf 100 1/3 1/3 90];
+        
+        % Use CARACAS_rethresh function to determine which criteria failed
+        % Create a temporary structure with only the current component
+        temp_CARACAS = fs(ids).CARACAS;
+        temp_CARACAS.meas = fs(ids).CARACAS.meas(icmp);
+        dummy_rej = zeros(1, 1);
+        [~, failed_criteria] = CARACAS_rethresh(dummy_rej, temp_CARACAS, cfg_CARACAS);
+        
         for i = 1:numel(fields)
             strtitle = [fields{i} ' = ' num2str(toprint.(fields{i}),2)];
             c = 'k';
-            c = ifelse(toprint.(fields{i}) < threshs_min(i),'r',c);
-            c = ifelse(toprint.(fields{i}) > threshs_max(i),'r',c);
-            x = xl(1)+(diff(xl)/3)*rem(i-1,round(numel(fields)/3)) +1;
-            y = yl(1)-(floor((i)/(numel(fields)/3))+1)*diff(yl)/20-diff(yl)/10;
-            text(x,y,strtitle,'HorizontalAlignment','left','VerticalAlignment','baseline','FontSize',8, 'Interpreter','none', 'color',c)
+            
+            % Color red if this specific field failed the criteria
+            if isfield(failed_criteria, fields{i}) && failed_criteria.(fields{i})
+                c = 'r';
+            end
+            
+            % Calculate position for clean column layout
+            ncols = min(3, numel(fields)); % Maximum 3 columns
+            nrows = ceil(numel(fields) / ncols);
+            col = rem(i-1, ncols) + 1;
+            row = ceil(i / ncols);
+            
+            x = xl(1) + (col-1) * diff(xl) / ncols + diff(xl) / (ncols * 20);
+            y = yl(1) - diff(yl) * 0.1 - (row-1) * diff(yl) / 10;
+            
+            text(x, y, strtitle, 'HorizontalAlignment', 'left', 'VerticalAlignment', 'top', 'FontSize', 8, 'Interpreter', 'none', 'color', c)
         end
         title([ifelse(fs(ids).CARACAS.rej(icmp),'CARACAS ',''),ifelse(fs(ids).MANUAL.rej(icmp), ' MANUAL ' ,'')])
     case 'SASICARACAS'
         toprint = fs(ids).SASICARACAS.meas(icmp);
         cfg = fs(ids).SASICARACAS.cfg;
         fields = fieldnames(toprint);
+        
+        % Use CARACAS_rethresh function to determine which criteria failed
+        % Create a temporary structure with only the current component
+        temp_SASICARACAS = fs(ids).SASICARACAS;
+        temp_SASICARACAS.meas = fs(ids).SASICARACAS.meas(icmp);
+        dummy_rej = zeros(1, 1);
+        [~, failed_criteria] = CARACAS_rethresh(dummy_rej, temp_SASICARACAS, cfg);
+        
         for i = 1:numel(fields)
             strtitle = [fields{i} ' = ' num2str(toprint.(fields{i}),2)];
             c = 'k';
-            if isscalar(cfg.(['thresh_' fields{i}]))
-                cfg.(['thresh_' fields{i}]) = [0 cfg.(['thresh_' fields{i}])];
+            
+            % Color red if this specific field failed the criteria
+            if isfield(failed_criteria, fields{i}) && failed_criteria.(fields{i})
+                c = 'r';
             end
-            c = ifelse(toprint.(fields{i}) < cfg.(['thresh_' fields{i}])(1),'r',c);
-            c = ifelse(toprint.(fields{i}) > cfg.(['thresh_' fields{i}])(2),'r',c);
-            x = xl(1)+(diff(xl)/3)*rem(i-1,round(numel(fields)/3)) +1;
-            y = yl(1)-(floor((i)/(numel(fields)/3))+1)*diff(yl)/20-diff(yl)/10;
-            text(x,y,strtitle,'HorizontalAlignment','left','VerticalAlignment','baseline','FontSize',8, 'Interpreter','none', 'color',c)
+            
+            % Calculate position for clean column layout
+            ncols = min(3, numel(fields)); % Maximum 3 columns
+            nrows = ceil(numel(fields) / ncols);
+            col = rem(i-1, ncols) + 1;
+            row = ceil(i / ncols);
+            
+            x = xl(1) + (col-1) * diff(xl) / ncols + diff(xl) / (ncols * 20);
+            y = yl(1) - diff(yl) * 0.1 - (row-1) * diff(yl) / 10;
+            
+            text(x, y, strtitle, 'HorizontalAlignment', 'left', 'VerticalAlignment', 'top', 'FontSize', 8, 'Interpreter', 'none', 'color', c)
         end
     case 'ICLabel'
         classes = fs(ids).ICLabel.meas.classes;
@@ -241,9 +275,17 @@ switch compare_with
             if classifications(i) == max(classifications)
                 c = 'r';
             end
-            x = xl(1)+(diff(xl)/3)*rem(i-1,round(numel(classes)/3)) +1;
-            y = yl(1)-(floor((i)/(numel(classes)/3))+1)*diff(yl)/20-diff(yl)/10;
-            text(x,y,strtitle,'HorizontalAlignment','left','VerticalAlignment','baseline','FontSize',8, 'Interpreter','none', 'color',c)
+            
+            % Calculate position for clean column layout
+            ncols = min(3, numel(classes)); % Maximum 3 columns
+            nrows = ceil(numel(classes) / ncols);
+            col = rem(i-1, ncols) + 1;
+            row = ceil(i / ncols);
+            
+            x = xl(1) + (col-1) * diff(xl) / ncols + diff(xl) / (ncols * 20);
+            y = yl(1) - diff(yl) * 0.05 - (row-1) * diff(yl) / (nrows + 5);
+            
+            text(x, y, strtitle, 'HorizontalAlignment', 'left', 'VerticalAlignment', 'top', 'FontSize', 8, 'Interpreter', 'none', 'color', c)
         end
         [~, max_idx] = max(classifications);
         title(['ICLabel: ' classes{max_idx} ' (' num2str(classifications(max_idx),2) ')'])
