@@ -233,7 +233,7 @@ switch compare_with
             text(x, y, strtitle, 'HorizontalAlignment', 'left', 'VerticalAlignment', 'top', 'FontSize', 8, 'Interpreter', 'none', 'color', c)
         end
         title([ifelse(fs(ids).CARACAS.rej(icmp),'CARACAS ',''),ifelse(fs(ids).MANUAL.rej(icmp), ' MANUAL ' ,'')])
-    case 'SASICARACAS'
+    case {'SASICARACAS', 'nuSASICARACAS'}
         toprint = fs(ids).SASICARACAS.meas(icmp);
         cfg = fs(ids).SASICARACAS.cfg;
         fields = fieldnames(toprint);
