@@ -1,12 +1,12 @@
 #!/bin/bash
 #SBATCH --mem=8G
 #SBATCH --partition=medium
-#SBATCH --time=1:00:00
-#SBATCH --nodes=8
-#SBATCH --job-name=Chabaoum2
-#SBATCH --output=/network/iss/cenir/analyse/meeg/CARACAS/Test_Max/ds003690/derivatives/CardiClassif/logs/log-%a
-#SBATCH --error=/network/iss/cenir/analyse/meeg/CARACAS/Test_Max/ds003690/derivatives/CardiClassif/logs/err/err-%a
-#SBATCH --array=38-375
+#SBATCH --time=0:10:00
+#SBATCH --cpus-per-task=8
+#SBATCH --job-name=Pom-pidom
+#SBATCH --output=/network/iss/cenir/analyse/meeg/CARACAS/Test_Max/ds003690/derivatives/CardiClassif_SASICA/logs/log-%a
+#SBATCH --error=/network/iss/cenir/analyse/meeg/CARACAS/Test_Max/ds003690/derivatives/CardiClassif_SASICA/logs/err/err-%a
+#SBATCH --array=1-375
 
 echo started on $HOSTNAME
 date
