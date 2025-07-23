@@ -193,10 +193,35 @@ for i_f = i_f%1:numel(fs)
         cfg_SASICA.opts.noplot = 1;
         cfg_SASICA.opts.noplotselectcomps = 1;
 
-        SASICCARACAS = eeg_SASICA(EEG,cfg_SASICA);
-        fs(i_f).nuSASICARACAS.cfg = SASICCARACAS.reject.SASICA.icaCARACAS_cfg;
-        fs(i_f).nuSASICARACAS.meas = SASICCARACAS.reject.SASICA.icaCARACAS;
-        fs(i_f).nuSASICARACAS.rej = SASICCARACAS.reject.gcompreject;
+        % Test all 8 combinations of the three parameters
+        param_combinations = [
+            0, 0, 0;  % absPT=0, abstemplate=0, NaNST=0 (original)
+            1, 0, 0;  % absPT=1, abstemplate=0, NaNST=0
+            0, 1, 0;  % absPT=0, abstemplate=1, NaNST=0
+            0, 0, 1;  % absPT=0, abstemplate=0, NaNST=1
+            1, 1, 0;  % absPT=1, abstemplate=1, NaNST=0
+            1, 0, 1;  % absPT=1, abstemplate=0, NaNST=1
+            0, 1, 1;  % absPT=0, abstemplate=1, NaNST=1
+            1, 1, 1;  % absPT=1, abstemplate=1, NaNST=1
+        ];
+        
+        param_names = {'orig', 'absPT', 'abstemplate', 'NaNST', 'absPT_abstemplate', 'absPT_NaNST', 'abstemplate_NaNST', 'absPT_abstemplate_NaNST'};
+        
+        for i_comb = 1:size(param_combinations, 1)
+            % Set parameters for this combination
+            cfg_SASICA.cfg_peak.absPT = param_combinations(i_comb, 1);
+            cfg_SASICA.cfg_peak.abstemplate = param_combinations(i_comb, 2);
+            cfg_SASICA.cfg_peak.NaNST = param_combinations(i_comb, 3);
+            
+            % Run SASICA with current parameter combination
+            SASICCARACAS = eeg_SASICA(EEG, cfg_SASICA);
+            
+            % Store results with descriptive field name
+            field_name = ['SASICARACAS_' param_names{i_comb}];
+            fs(i_f).(field_name).cfg = SASICCARACAS.reject.SASICA.icaCARACAS_cfg;
+            fs(i_f).(field_name).meas = SASICCARACAS.reject.SASICA.icaCARACAS;
+            fs(i_f).(field_name).rej = SASICCARACAS.reject.gcompreject;
+        end
     end
     if update_CARACAS
         %% CARACAS
