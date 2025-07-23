@@ -3,22 +3,10 @@
 % clear all
 % close all
 
-%% !!!!! USER CHOOSE PARAMETERS !!!!!
-
-which_data = '_SASICA'; %''; %'_30comp';%   //
-
-nb_IC_of_interest = 'all'; %55;%45;% 'all' // 
-
-which_col_in_csv = '_sure'; % '' // '_sure' // 'rej_noisy'
-
-compare_truth = 'MANUAL';
-compare_with = 'SASICARACAS'; %'CARACAS'; % 'CARACAS'; % 'CORR';
-
-
-%% Path and load data
-
+%% !% Create output directory for plots
 setpath_ds003690
 
+%% Path and load data
 load(fullfile(dirout,'AllFilesAndScoresList.mat'))
 
 if ispc
@@ -31,131 +19,169 @@ if ispc
     end
 end
 
+plot_dir = fullfile(dirout, '..', 'CardiClassif_SASICA', 'plots_compare');! USER CHOOSE PARAMETERS !!!!!
 
-% %% Plot hist to find thresholds
-%
-%
-% all_metric_of_interest = [];
-% for i_f = 1:numel(fs)
-%     all_metric_of_interest(i_f,:) = [fs(i_f).CARACAS.meas.bpm]; % .sk // RR // Rampl // bpm // ku
-%     allrej(i_f,:)= [fs(i_f).MANUAL.rej];
-% end
-%
-% nu_metric = all_metric_of_interest(allrej);
-% nunu_metric = all_metric_of_interest(~allrej);
-% figure;
-% h1 = histogram(nu_metric, 'Normalization', 'probability');
-% hold on
-% h2 = histogram(nunu_metric, 'Normalization', 'probability'); % 'NumBins', 1000,
-% hold on;
-% xline(35, 'r--', 'LineWidth', 2);
-% xline(95, 'r--', 'LineWidth', 2);
-% xlabel('bpm')
-% ylabel('% of cardiac and non-cardiac IC')
-% legend([h1, h2], {'Cardiac IC', 'Non-cardiac IC'}, 'Location', 'best');
-% set(gca, 'FontSize', 38);
-%
+which_data = '_SASICA'; %''; %'_30comp';%   //
 
+nb_IC_of_interest = 56;%'all'; %55;%45;% 'all' // 
 
-%% Overwrite CARACAS to test specific thresholds for each variable
+which_col_in_csv = '_sure'; % '' // '_sure' // 'rej_noisy'
 
+compare_truth = 'MANUAL';
 
-%%% Adapt thresholds here
-cfg_SASICA = SASICA('getdefs');
-cfg_CARACAS = cfg_SASICA.CARACAS;
-cfg_CARACAS.enable = 1;
+% Define all parameter combinations to test
+param_combinations = {'SASICARACAS_orig', 'SASICARACAS_absPT', 'SASICARACAS_abstemplate', 'SASICARACAS_NaNST', 'SASICARACAS_absPT_abstemplate', 'SASICARACAS_absPT_NaNST', 'SASICARACAS_abstemplate_NaNST', 'SASICARACAS_absPT_abstemplate_NaNST'};
 
-truthrej = NaN(numel(fs),size(fs(1).CORR.rej,2));
-withrej = truthrej;
+% Also include standard comparisons
+standard_comparisons = {'CARACAS', 'SASICARACAS', 'ICLabel', 'CORR'};
+all_comparisons = [standard_comparisons, param_combinations];
 
-for i_f = 1:numel(fs)
-    if strcmp(compare_truth,'MANUAL')
-        truthrej(i_f,:) = fs(i_f).(compare_truth).(['rej' which_col_in_csv]);
-    elseif ~isempty(regexp(compare_truth,'CARACAS', 'once'))
-        truthrej(i_f,:) = CARACAS_rethresh(truthrej(i_f,:),fs(i_f).(compare_truth),cfg_CARACAS);
-    else
-        truthrej(i_f,:) = fs(i_f).(compare_truth).rej;
-    end
-
-
-    if ~isempty(regexp(compare_with,'CARACAS', 'once'))
-
-        withrej(i_f,:) = CARACAS_rethresh(withrej(i_f,:),fs(i_f).(compare_with),cfg_CARACAS);
-    else
-        withrej(i_f,:) = fs(i_f).(compare_with).rej;
-    end
+% Create output directory for plots
+setpath_ds003690
+plot_dir = fullfile(dirout, '..', 'CardiClassif_SASICA', 'plots_compare');
+if ~exist(plot_dir, 'dir')
+    mkdir(plot_dir);
 end
 
+%% Loop through all comparisons
+for i_comp = 1:length(all_comparisons)
+    compare_with = all_comparisons{i_comp};
+    
+    fprintf('\n=== Processing comparison %d/%d: %s ===\n', i_comp, length(all_comparisons), compare_with);
+    
+    % Check if this comparison exists in the data
+    if ~strcmp(compare_with, 'CARACAS') && ~strcmp(compare_with, 'ICLabel') && ~strcmp(compare_with, 'CORR')
+        % Check if any file has this field
+        has_field = false;
+        for i_f = 1:min(5, numel(fs)) % Check first 5 files
+            if isfield(fs(i_f), compare_with)
+                has_field = true;
+                break;
+            end
+        end
+        if ~has_field
+            fprintf('   Skipping %s - field not found in data\n', compare_with);
+            continue;
+        end
+    end
+    
+    %% Overwrite CARACAS to test specific thresholds for each variable
+    %%% Adapt thresholds here
+    cfg_SASICA = SASICA('getdefs');
+    cfg_CARACAS = cfg_SASICA.CARACAS;
+    cfg_CARACAS.enable = 1;
 
+    truthrej = NaN(numel(fs),size(fs(1).CORR.rej,2));
+    withrej = truthrej;
 
-%% Plot and performances
+    for i_f = 1:numel(fs)
+        if strcmp(compare_truth,'MANUAL')
+            truthrej(i_f,:) = fs(i_f).(compare_truth).(['rej' which_col_in_csv]);
+        elseif ~isempty(regexp(compare_truth,'CARACAS', 'once'))
+            truthrej(i_f,:) = CARACAS_rethresh(truthrej(i_f,:),fs(i_f).(compare_truth),cfg_CARACAS);
+        else
+            truthrej(i_f,:) = fs(i_f).(compare_truth).rej;
+        end
 
-% Plot the two figures on the top (MANUAL and CARACAS)
-figure(595);clf
-set(gcf,'UserData',struct('fs',fs, 'compare_with', compare_with, 'compare_truth',compare_truth, 'cfg_CARACAS', cfg_CARACAS))
-subplot(321)
-hi = imagesc(truthrej');
-title(compare_truth)
-set(hi,"ButtonDownFcn",@plotit);
-subplot(322);
-hi = imagesc(withrej');
-title(compare_with)
-set(hi,"ButtonDownFcn",@plotit);
+        if ~isempty(regexp(compare_with,'CARACAS', 'once'))
+            withrej(i_f,:) = CARACAS_rethresh(withrej(i_f,:),fs(i_f).(compare_with),cfg_CARACAS);
+        else
+            withrej(i_f,:) = fs(i_f).(compare_with).rej;
+        end
+    end
 
-subplot(3,2,[3 6]);
-toplot = NaN(size(truthrej));
-toplot(truthrej & withrej) = 1;     % Hit
-toplot(truthrej & ~ withrej) = 2;   % Miss
-toplot(~truthrej & ~withrej) = 3;   % CR
-toplot(~truthrej & withrej) = 4;    % FA
-names = {'Hit','Miss','CR','FA'};
+    %% Plot and performances
+    % Plot the two figures on the top (MANUAL and CARACAS)
+    figure(595);clf
+    set(gcf,'UserData',struct('fs',fs, 'compare_with', compare_with, 'compare_truth',compare_truth, 'cfg_CARACAS', cfg_CARACAS))
+    subplot(321)
+    hi = imagesc(truthrej');
+    title(compare_truth, 'interpreter', 'none')
+    set(hi,"ButtonDownFcn",@plotit);
+    subplot(322);
+    hi = imagesc(withrej');
+    title(compare_with, 'interpreter', 'none')
+    set(hi,"ButtonDownFcn",@plotit);
 
+    subplot(3,2,[3 6]);
+    toplot = NaN(size(truthrej));
+    toplot(truthrej & withrej) = 1;     % Hit
+    toplot(truthrej & ~ withrej) = 2;   % Miss
+    toplot(~truthrej & ~withrej) = 3;   % CR
+    toplot(~truthrej & withrej) = 4;    % FA
+    names = {'Hit','Miss','CR','FA'};
 
-% Select only a subset of IC
-if ~ strcmp(nb_IC_of_interest, 'all')
-    toplot = toplot(:,1:nb_IC_of_interest);
+    % Select only a subset of IC
+    if ~ strcmp(nb_IC_of_interest, 'all')
+        toplot = toplot(:,1:nb_IC_of_interest);
+    end
+
+    % Plot overlaping the two (with Hit, Miss, FA, CR)
+    hi = imagesc(toplot');
+    vline(1:numel(fs),':k','pickableparts','none')
+    hline(1:size(toplot,2),':k','pickableparts','none')
+    set(gca,'Colormap',varycolor(4))
+    set(hi,"ButtonDownFcn",@plotit);
+    clim([0.5 4.5])
+    h = colorbar();
+    set(h,'YTick',1:4,'yticklabel',names)
+
+    %%%% Compute perf metrics
+    % Sensitivity = Hit / (Hit + Miss)
+    Sensitivity = sum(toplot == 1) / (sum(toplot== 1) + sum(toplot == 2));
+    % Specificity = CR  / (CR + FA)
+    Specificity = sum(toplot == 3) / (sum(toplot== 3) + sum(toplot == 4));
+    Balanced_accuracy = (Sensitivity + Specificity) / 2;
+
+    xlab = sprintf('Sensitivity = %0.3g     Specificity = %0.3g     Balanced Acc = %0.3g', Sensitivity, Specificity, Balanced_accuracy);
+    xlabel(xlab)
+
+    % Create overall title for the figure
+    sgtitle(sprintf('Comparison: %s vs %s', compare_truth, compare_with), 'FontSize', 14, 'FontWeight', 'bold', 'interpreter', 'none');
+
+    %%%% Display and save results
+    fprintf('   Ground truth: %s\n', compare_truth);
+    fprintf('   Automatic classifier: %s\n', compare_with);
+    fprintf('   Sensitivity: %.3f\n', Sensitivity);
+    fprintf('   Specificity: %.3f\n', Specificity);
+    fprintf('   Balanced Accuracy: %.3f\n', Balanced_accuracy);
+
+    % Maximize figure before saving
+    set(gcf, 'WindowState', 'maximized');
+    
+    % Save figure
+    fig_name = sprintf('SDT_comparison_%s_vs_%s', compare_truth, compare_with);
+    fig_path = fullfile(plot_dir, [fig_name '.fig']);
+    saveas(gcf, fig_path);
+    fig_path = strrep(fig_path,'.fig','.png');
+    saveas(gcf, fig_path);
+    fprintf('   Figure saved: %s\n', fig_path);
+    
+    % Save performance metrics
+    results(i_comp).compare_with = compare_with;
+    results(i_comp).compare_truth = compare_truth;
+    results(i_comp).sensitivity = Sensitivity;
+    results(i_comp).specificity = Specificity;
+    results(i_comp).balanced_accuracy = Balanced_accuracy;
+    results(i_comp).n_subjects = size(toplot, 1);
+    results(i_comp).n_components = size(toplot, 2);
 end
 
+%% Save summary results
+summary_file = fullfile(plot_dir, 'comparison_summary.mat');
+save(summary_file, 'results');
+fprintf('\nSummary results saved: %s\n', summary_file);
 
-% Plot overlaping the two (with Hit, Miss, FA, CR)
-hi = imagesc(toplot');
-vline(1:numel(fs),':k','pickableparts','none')
-hline(1:size(toplot,2),':k','pickableparts','none')
-set(gca,'Colormap',varycolor(4))
-set(hi,"ButtonDownFcn",@plotit);
-clim([0.5 4.5])
-h = colorbar();
-set(h,'YTick',1:4,'yticklabel',names)
-
-
-%%%% Compute perf metrics
-% Sensitivity = Hit / (Hit + Miss)
-Sensitivity = sum(toplot == 1) / (sum(toplot== 1) + sum(toplot == 2))
-% Specificity = CR  / (CR + FA)
-Specificity = sum(toplot == 3) / (sum(toplot== 3) + sum(toplot == 4))
-Balanced_accuracy = (Sensitivity + Specificity) / 2
-
-xlab = sprintf('Sensitivity = %0.3g     Specificity = %0.3g     Balanced Acc = %0.3g', Sensitivity, Specificity, Balanced_accuracy);
-xlabel(xlab)
-% Weighted_accuracy = 0.25*Sensitivity + 0.75*Specificity
-
-% Accuracy = ( sum(toplot == 1) + sum(toplot == 3) ) / (sum(toplot == 1) + sum(toplot == 2) + sum(toplot == 3) + sum(toplot == 4) )
-
-
-
-%%%% Display parameters
-% Algo
-disp(['Ground truth: ' compare_truth])
-disp(['Automatic classifier: ' compare_with])
-
-% Nb of IC
-fprintf('Nb of IC per subject: %d (%d)\n',size(toplot,2),  nb_IC_of_interest)
-
-% Which col of the csv
-if isempty(which_col_in_csv)
-    disp('Cardiac IC tested: ALL (sure + noisy)')
-else
-    disp(['Cardiac IC tested: ' which_col_in_csv])
+% Display summary table
+fprintf('\n=== SUMMARY OF ALL COMPARISONS ===\n');
+fprintf('%-35s | Sens. | Spec. | Bal.Acc\n', 'Method');
+fprintf('%s\n', repmat('-', 1, 55));
+for i = 1:length(results)
+    fprintf('%-35s | %.3f | %.3f | %.3f\n', ...
+        results(i).compare_with, ...
+        results(i).sensitivity, ...
+        results(i).specificity, ...
+        results(i).balanced_accuracy);
 end
 
 
@@ -185,7 +211,7 @@ cfg.channel = 'eeg';
 cfg.figure = h;
 ft_topoplotIC(cfg,comp)
 
-title(['comp' num2str(icmp) ' ' fs(ids).sub,' ', fs(ids).task,' ', fs(ids).run], 'fontsize',16);
+title(['comp' num2str(icmp) ' ' fs(ids).sub,' ', fs(ids).task,' ', fs(ids).run], 'fontsize',16, 'Interpreter', 'none');
 
 
 data = load(fs(ids).eegf);
@@ -232,7 +258,7 @@ switch compare_with
             
             text(x, y, strtitle, 'HorizontalAlignment', 'left', 'VerticalAlignment', 'top', 'FontSize', 8, 'Interpreter', 'none', 'color', c)
         end
-        title([ifelse(fs(ids).CARACAS.rej(icmp),'CARACAS ',''),ifelse(fs(ids).MANUAL.rej(icmp), ' MANUAL ' ,'')])
+        title([ifelse(fs(ids).CARACAS.rej(icmp),'CARACAS ',''),ifelse(fs(ids).MANUAL.rej(icmp), ' MANUAL ' ,'')], 'interpreter', 'none')
     case {'SASICARACAS', 'nuSASICARACAS'}
         toprint = fs(ids).SASICARACAS.meas(icmp);
         cfg = fs(ids).SASICARACAS.cfg;

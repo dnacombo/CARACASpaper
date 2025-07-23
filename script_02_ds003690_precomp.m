@@ -209,9 +209,9 @@ for i_f = i_f%1:numel(fs)
         
         for i_comb = 1:size(param_combinations, 1)
             % Set parameters for this combination
-            cfg_SASICA.cfg_peak.absPT = param_combinations(i_comb, 1);
-            cfg_SASICA.cfg_peak.abstemplate = param_combinations(i_comb, 2);
-            cfg_SASICA.cfg_peak.NaNST = param_combinations(i_comb, 3);
+            cfg_SASICA.CARACAS.cfg_peak.absPT = param_combinations(i_comb, 1);
+            cfg_SASICA.CARACAS.cfg_peak.abstemplate = param_combinations(i_comb, 2);
+            cfg_SASICA.CARACAS.cfg_peak.NaNST = param_combinations(i_comb, 3);
             
             % Run SASICA with current parameter combination
             SASICCARACAS = eeg_SASICA(EEG, cfg_SASICA);
