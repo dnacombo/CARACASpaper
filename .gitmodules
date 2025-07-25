@@ -10,3 +10,6 @@
 [submodule "MiscMatlab"]
 	path = MiscMatlab
 	url = ./MiscMatlab/
+[submodule "SASICA"]
+	path = SASICA
+	url = https://github.com/dnacombo/SASICA
