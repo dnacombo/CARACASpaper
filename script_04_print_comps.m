@@ -57,7 +57,6 @@ for i_f = i_f%1:numel(fs)
                     toprint = removefields(fs(i_f).CARACAS.meas(i_c),{'Ampl_var'});
                     fields = fieldnames(toprint);
                     threshs = [];
-                    threshs.PQ = [0 1/3];
                     threshs.QS = [0 1/3];
                     threshs.ST = [0 1/3];
                     threshs.PR = [0 1/3];

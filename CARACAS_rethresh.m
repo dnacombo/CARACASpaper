@@ -26,12 +26,6 @@ for i_c = 1:size(rej,2)
         failed_criteria(i_c).ku = true;
     end
 
-    % PQ
-    if CARACAS_struct.meas(i_c).PQ > cfg_CARACAS.thresh_PQ
-        NotCardiac = 1;
-        failed_criteria(i_c).PQ = true;
-    end
-
     % RR
     if CARACAS_struct.meas(i_c).RR > cfg_CARACAS.thresh_RR
         NotCardiac = 1;

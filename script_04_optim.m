@@ -49,7 +49,7 @@ end
 
 %%
 % Display results as a table
-param_names = {'thresh_sk', 'thresh_ku1', 'thresh_PQ', 'thresh_RR', 'thresh_Rampl', 'thresh_bpm1', 'thresh_bpm2', 'TestError'};
+param_names = {'thresh_sk', 'thresh_ku1', 'thresh_RR', 'thresh_Rampl', 'thresh_bpm1', 'thresh_bpm2', 'TestError'};
 results_table = [bestparams, testerr'];
 mean_row = [mean(bestparams), mean(testerr)];
 
@@ -69,10 +69,9 @@ cfg_SASICA = SASICA('getdefs');
 cfg_CARACAS = cfg_SASICA.CARACAS;
 cfg_CARACAS.thresh_sk = threshs(1);
 cfg_CARACAS.thresh_ku = threshs(2);
-cfg_CARACAS.thresh_PQ = threshs(3);
-cfg_CARACAS.thresh_RR = threshs(4);
-cfg_CARACAS.thresh_Rampl = threshs(5);
-cfg_CARACAS.thresh_bpm = threshs(6:7);
+cfg_CARACAS.thresh_RR = threshs(3);
+cfg_CARACAS.thresh_Rampl = threshs(4);
+cfg_CARACAS.thresh_bpm = threshs(5:6);
 
 CORRrej = zeros(numel(fs),numel(fs(1).CORR.rej));CARACASrej = zeros(numel(fs),numel(fs(1).CARACAS.rej));SASICARACASrej = zeros(numel(fs),numel(fs(1).SASICARACAS.rej));
 for i = 1:numel(fs)
