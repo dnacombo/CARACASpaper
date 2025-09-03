@@ -1,9 +1,9 @@
-function [withrej, failed_criteria] = CARACAS_rethresh(withrej, CARACAS_struct, cfg_CARACAS)
+function [rej, failed_criteria] = CARACAS_rethresh(rej, CARACAS_struct, cfg_CARACAS)
 
 % Initialize failed_criteria structure
 failed_criteria = struct();
 
-for i_c = 1:size(withrej,2)
+for i_c = 1:size(rej,2)
     NotCardiac = 0;
     
     % Initialize criteria failure flags for this component
@@ -50,6 +50,6 @@ for i_c = 1:size(withrej,2)
         failed_criteria(i_c).bpm = true;
     end
     
-    withrej(1,i_c) = ~ NotCardiac;
+    rej(1,i_c) = ~ NotCardiac;
 end
 end
