@@ -21,7 +21,7 @@ for i_c = 1:size(withrej,2)
     end
 
     % Kurtosis
-    if CARACAS_struct.meas(i_c).ku < cfg_CARACAS.thresh_ku(1) || CARACAS_struct.meas(i_c).ku > cfg_CARACAS.thresh_ku(2)
+    if CARACAS_struct.meas(i_c).ku < cfg_CARACAS.thresh_ku
         NotCardiac = 1;
         failed_criteria(i_c).ku = true;
     end
