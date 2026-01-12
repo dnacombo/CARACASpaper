@@ -10,7 +10,7 @@
 
 echo started on $HOSTNAME
 date
-module load matlab
+module load matlab/R2024b
 tic="`date +%s`"
 cmd=$( printf "script_02_ds003690_precomp(%d)" ${SLURM_ARRAY_TASK_ID})
 matlab -nodesktop -nodisplay -nosoftwareopengl -r "cd /network/iss/cenir/analyse/meeg/CARACAS/Test_Max/code; $cmd;exit;"
