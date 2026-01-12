@@ -77,7 +77,11 @@ for i_f = i_f%1:numel(fs)
             cfg.refchannel = 'all';%{'M1', 'M2'};
             % Filter
             cfg.hpfilter = 'yes';
-            cfg.hpfreq = .1;
+            if contains(which_data,'HPF1Hz')
+                cfg.hpfreq = 1;
+            else
+                cfg.hpfreq = .1;
+            end
             cfg.hpfilttype = 'firws';
             cfg.lpfilter = 'yes';
             cfg.lpfilter = 35;
