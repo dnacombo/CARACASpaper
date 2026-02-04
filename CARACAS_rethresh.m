@@ -14,10 +14,10 @@ for i_c = 1:size(rej,2)
     failed_criteria(i_c).Rampl = false;
     failed_criteria(i_c).bpm = false;
     
-    % if isfield(CARACAS_struct.meas,'RPeakstoNoise') && CARACAS_struct.meas(i_c).RPeakstoNoise > cfg_CARACAS.thresh_RPeakstoNoise
-    %     NotCardiac = 1;
-    %     failed_criteria(i_c).RPeakstoNoise = true;
-    % end
+    if isfield(CARACAS_struct.meas,'RPeakstoNoise') && CARACAS_struct.meas(i_c).RPeakstoNoise < cfg_CARACAS.thresh_RPeakstoNoise
+        NotCardiac = 1;
+        failed_criteria(i_c).RPeakstoNoise = true;
+    end
 
     % Skewness
     if CARACAS_struct.meas(i_c).sk < cfg_CARACAS.thresh_sk
