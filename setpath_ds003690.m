@@ -17,7 +17,6 @@ addpath(fullfile(dircode,'MiscMatlab', 'stats'))
 addpath(fullfile(dircode,strrep('MiscMatlab/plot/','/',filesep)))
 addpath(fullfile(dircode,strrep('MiscMatlab/plot/panel','/',filesep)))
 
-addpath(fullfile(dircode,'Palamedes'))
 addpath(fullfile(dircode,'SASICA'))
 rm_frompath('eeglab') % avoid interference with other versions
 rm_frompath('fieldtrip')

@@ -3,7 +3,9 @@
 % clear all
 % close all
 
-%% !% Create output directory for plots
+%% 
+which_data = '_SASICA_replicate'; % _HPF1Hz'' // '_30comp'_HPF1Hz
+
 setpath_ds003690
 
 %% Path and load data
@@ -21,29 +23,28 @@ end
 
 plot_dir = fullfile(dirout, '..', 'CardiClassif_SASICA', 'plots_compare');! USER CHOOSE PARAMETERS !!!!!
 
-which_data = '_SASICA'; %''; %'_30comp';%   //
 
-nb_IC_of_interest = 56;%'all'; %55;%45;% 'all' // 
+nb_IC_of_interest = 55;%'all';%10;% %%45;% 'all' // 
 
 which_col_in_csv = '_sure'; % '' // '_sure' // 'rej_noisy'
 
 compare_truth = 'MANUAL';
 
 % Define all parameter combinations to test
-param_combinations = {'SASICARACAS_orig', 'SASICARACAS_absPT', 'SASICARACAS_abstemplate', 'SASICARACAS_NaNST', 'SASICARACAS_absPT_abstemplate', 'SASICARACAS_absPT_NaNST', 'SASICARACAS_abstemplate_NaNST', 'SASICARACAS_absPT_abstemplate_NaNST'};
+param_combinations = {};%'SASICARACAS_orig', 'SASICARACAS_absPT', 'SASICARACAS_abstemplate', 'SASICARACAS_NaNST', 'SASICARACAS_absPT_abstemplate', 'SASICARACAS_absPT_NaNST', 'SASICARACAS_abstemplate_NaNST', 'SASICARACAS_absPT_abstemplate_NaNST'};
 
 % Also include standard comparisons
-standard_comparisons = {'CARACAS', 'SASICARACAS', 'ICLabel', 'CORR'};
+standard_comparisons = {'SASICARACAS' 'CARACAS'};%'ICLabel' , 'CARACAS', , 'CORR'
 all_comparisons = [standard_comparisons, param_combinations];
 
 % Create output directory for plots
-setpath_ds003690
 plot_dir = fullfile(dirout, '..', 'CardiClassif_SASICA', 'plots_compare');
 if ~exist(plot_dir, 'dir')
     mkdir(plot_dir);
 end
 
 %% Loop through all comparisons
+results = [];
 for i_comp = 1:length(all_comparisons)
     compare_with = all_comparisons{i_comp};
     
@@ -92,7 +93,7 @@ for i_comp = 1:length(all_comparisons)
 
     %% Plot and performances
     % Plot the two figures on the top (MANUAL and CARACAS)
-    figure(595);clf
+    figure(595+i_comp);clf
     set(gcf,'UserData',struct('fs',fs, 'compare_with', compare_with, 'compare_truth',compare_truth, 'cfg_CARACAS', cfg_CARACAS))
     subplot(321)
     hi = imagesc(truthrej');
@@ -128,16 +129,38 @@ for i_comp = 1:length(all_comparisons)
 
     %%%% Compute perf metrics
     % Sensitivity = Hit / (Hit + Miss)
-    Sensitivity = sum(toplot == 1) / (sum(toplot== 1) + sum(toplot == 2));
+    Sensitivity = nanmean(sum(toplot == 1,2) ./ (sum(toplot== 1,2) + sum(toplot == 2,2)));
     % Specificity = CR  / (CR + FA)
-    Specificity = sum(toplot == 3) / (sum(toplot== 3) + sum(toplot == 4));
+    Specificity = nanmean(sum(toplot == 3,2) ./ (sum(toplot== 3,2) + sum(toplot == 4,2)));
     Balanced_accuracy = (Sensitivity + Specificity) / 2;
+    % Create overall title for the figure
+    sgtitle(sprintf('Comparison: %s vs %s', compare_truth, compare_with), 'FontSize', 14, 'FontWeight', 'bold', 'interpreter', 'none');
+
+    % FAR = FA / (FA + CR) on the last N rows of toplot
+    N = 2; % Number of last components to consider
+    FAR = sum(toplot(:,end-N+1:end) == 4) / (sum(toplot(:,end-N+1:end) == 4) + sum(toplot(:,end-N+1:end) == 3));
+    fprintf('   FAR (last %d components): %.3f\n', N, FAR);
 
     xlab = sprintf('Sensitivity = %0.3g     Specificity = %0.3g     Balanced Acc = %0.3g', Sensitivity, Specificity, Balanced_accuracy);
     xlabel(xlab)
 
-    % Create overall title for the figure
-    sgtitle(sprintf('Comparison: %s vs %s', compare_truth, compare_with), 'FontSize', 14, 'FontWeight', 'bold', 'interpreter', 'none');
+    if 0
+        % add a plot of FAR for each component (2d dimention of toplot)
+        figure(596);clf
+        FAR_per_comp = NaN(1,size(toplot,2));
+        for i_c = 1:size(toplot,2)
+            FAR_per_comp(i_c) = sum(toplot(:,i_c) == 4) / (sum(toplot(:,i_c) == 4) + sum(toplot(:,i_c) == 3));
+        end
+        plot(1:size(toplot,2), FAR_per_comp, '-o', 'LineWidth', 1.5);
+        grid on;
+        xlim([0.5 size(toplot,2)+0.5]);
+        ylim([-0.05 1.05]);
+        xticks(1:size(toplot,2));
+        xlabel('Component Number');
+        ylabel('False Alarm Rate (FAR)');
+        ylab = 'FAR';
+        ylabel(ylab);
+    end
 
     %%%% Display and save results
     fprintf('   Ground truth: %s\n', compare_truth);
@@ -200,7 +223,7 @@ ids = round(p(1,1));
 
 load('layout.mat')
 
-fig(21,4894);clf;
+fig(21);
 h = subplot(211);
 
 comp = load(fs(ids).compf);
@@ -254,7 +277,7 @@ switch compare_with
             row = ceil(i / ncols);
             
             x = xl(1) + (col-1) * diff(xl) / ncols + diff(xl) / (ncols * 20);
-            y = yl(1) - diff(yl) * 0.1 - (row-1) * diff(yl) / 10;
+            y = yl(1) - diff(yl) * 0.1 - (row-1) * diff(yl) / 20;
             
             text(x, y, strtitle, 'HorizontalAlignment', 'left', 'VerticalAlignment', 'top', 'FontSize', 8, 'Interpreter', 'none', 'color', c)
         end
@@ -263,6 +286,7 @@ switch compare_with
         toprint = fs(ids).SASICARACAS.meas(icmp);
         cfg = fs(ids).SASICARACAS.cfg;
         fields = fieldnames(toprint);
+        fields = setdiff(fields, {'NotCardiac', 'cfg'});
         
         % Use CARACAS_rethresh function to determine which criteria failed
         % Create a temporary structure with only the current component
@@ -287,10 +311,11 @@ switch compare_with
             row = ceil(i / ncols);
             
             x = xl(1) + (col-1) * diff(xl) / ncols + diff(xl) / (ncols * 20);
-            y = yl(1) - diff(yl) * 0.1 - (row-1) * diff(yl) / 10;
+            y = yl(1) - diff(yl) * 0.1 - (row-1) * diff(yl) / 20;
             
             text(x, y, strtitle, 'HorizontalAlignment', 'left', 'VerticalAlignment', 'top', 'FontSize', 8, 'Interpreter', 'none', 'color', c)
         end
+        title([ifelse(fs(ids).SASICARACAS.rej(icmp),'SASICARACAS ',''),ifelse(fs(ids).MANUAL.rej(icmp), ' MANUAL ' ,'')], 'interpreter', 'none')
     case 'ICLabel'
         classes = fs(ids).ICLabel.meas.classes;
         classifications = fs(ids).ICLabel.meas.classifications(icmp,:);

@@ -1,7 +1,10 @@
+
+which_data = '_SASICA_replicate'; % '' // '_30comp'_HPF1Hz
+
 setpath_ds003690
 
 compare_truth = 'MANUAL';
-compare_with = 'CARACAS'; %'ICLabel'; % 'CARACAS'; % 'CORR';
+compare_with = 'SASICARACAS'; %'ICLabel'; % 'CARACAS'; % 'CORR';
 
 rm_frompath('eeglab')
 
@@ -17,13 +20,19 @@ if ispc
     end
 end
 
+rng(123)
 
 %% Number of folds
 K = 5;
 cfg_SASICA = SASICA('getdefs');
-cfg_SASICA.CARACAS.enable = 1;
-cfg_CARACAS = cfg_SASICA.CARACAS;
-param_vec = [cfg_CARACAS.thresh_sk cfg_CARACAS.thresh_ku cfg_CARACAS.thresh_PQ cfg_CARACAS.thresh_RR cfg_CARACAS.thresh_Rampl cfg_CARACAS.thresh_bpm];
+% cfg_SASICA.CARACAS.enable = 1;
+% cfg_CARACAS = cfg_SASICA.CARACAS;
+% cfg_CARACAS.thresh_sk = 1;
+% cfg_CARACAS.thresh_ku = 5;
+% cfg_CARACAS.thresh_RR  = 1/3;
+% cfg_CARACAS.thresh_Rampl = 1/4;
+% cfg_CARACAS.thresh_bpm = [35 100];
+param_vec = [cfg_CARACAS.thresh_sk cfg_CARACAS.thresh_ku cfg_CARACAS.thresh_RR cfg_CARACAS.thresh_Rampl cfg_CARACAS.thresh_bpm];
 
 % Split data into K folds
 cv = cvpartition(length(fs), 'KFold', K);
@@ -73,33 +82,59 @@ cfg_CARACAS.thresh_RR = threshs(3);
 cfg_CARACAS.thresh_Rampl = threshs(4);
 cfg_CARACAS.thresh_bpm = threshs(5:6);
 
-CORRrej = zeros(numel(fs),numel(fs(1).CORR.rej));CARACASrej = zeros(numel(fs),numel(fs(1).CARACAS.rej));SASICARACASrej = zeros(numel(fs),numel(fs(1).SASICARACAS.rej));
-for i = 1:numel(fs)
-    CORRrej(i,:) = fs(i).CORR.rej;
-
-    CARACASrej(i,:) = CARACAS_rethresh(CARACASrej(i,:), fs(i).CARACAS, cfg_CARACAS);
-
-    SASICARACASrej(i,:) = CARACAS_rethresh(SASICARACASrej(i,:), fs(i).SASICARACAS, cfg_CARACAS);
-    MANUALrej(i,:) = fs(i).MANUAL.rej;
-end
 switch compare_truth
     case 'MANUAL'
+        for i = 1:numel(fs)
+            MANUALrej(i,:) = fs(i).MANUAL.rej;
+        end
         truthrej = MANUALrej;
     case 'SASICARACAS'
+        SASICARACASrej = zeros(numel(fs),numel(fs(1).SASICARARAS.rej));
+        for i = 1:numel(fs)
+            SASICARACASrej(i,:) = CARACAS_rethresh(SASICARACASrej(i,:), fs(i).SASICARACAS, cfg_CARACAS);
+        end
         truthrej = SASICARACASrej;
     case 'CARACAS'
+        CARACASrej = zeros(numel(fs),numel(fs(1).CARARAS.rej));
+        for i = 1:numel(fs)
+            CORRrej(i,:) = fs(i).CORR.rej;
+
+            CARACASrej(i,:) = CARACAS_rethresh(CARACASrej(i,:), fs(i).CARACAS, cfg_CARACAS);
+
+            SASICARACASrej(i,:) = CARACAS_rethresh(SASICARACASrej(i,:), fs(i).SASICARACAS, cfg_CARACAS);
+            MANUALrej(i,:) = fs(i).MANUAL.rej;
+        end
         truthrej = CARACASrej;
     case 'CORR'
+        CORRrej = zeros(numel(fs),numel(fs(1).CORR.rej));
+        for i = 1:numel(fs)
+            CORRrej(i,:) = fs(i).CORR.rej;
+        end
         truthrej = CORRrej;
 end
 switch compare_with
     case 'MANUAL'
+        for i = 1:numel(fs)
+            MANUALrej(i,:) = fs(i).MANUAL.rej;
+        end
         withrej = MANUALrej;
     case 'SASICARACAS'
+        SASICARACASrej = zeros(numel(fs),numel(fs(1).SASICARACAS.rej));
+        for i = 1:numel(fs)
+            SASICARACASrej(i,:) = CARACAS_rethresh(SASICARACASrej(i,:), fs(i).SASICARACAS, cfg_CARACAS);
+        end
         withrej = SASICARACASrej;
     case 'CARACAS'
+        CARACASrej = zeros(numel(fs),numel(fs(1).CARARAS.rej));
+        for i = 1:numel(fs)
+            CARACASrej(i,:) = CARACAS_rethresh(CARACASrej(i,:), fs(i).CARACAS, cfg_CARACAS);
+        end
         withrej = CARACASrej;
     case 'CORR'
+        CORRrej = zeros(numel(fs),numel(fs(1).CORR.rej));
+        for i = 1:numel(fs)
+            CORRrej(i,:) = fs(i).CORR.rej;
+        end
         withrej = CORRrej;
 end
 

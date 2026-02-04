@@ -9,20 +9,22 @@ plot_comp       = 0;
 force_recomp    = 0;
 
 quick_update        = 0;
-update_CARACAS      = 0;
-update_SASICARACAS  = 0;
-update_nuSASICARACAS= 1;
+update_CARACAS      = 1;
+update_SASICARACAS  = 1;
+update_nuSASICARACAS= 0;% CARACAS in SASICA after modifying eeg_SASICA to use option absPT for heart_peak_detect
 update_ICLabel      = 0;
 update_CORR         = 0;
 
+controlplot         = 0;
+
 corthresh = .6; % correlation threshold component time course with ECG
 
-which_data = '_SASICA'; % '' // '_30comp'
+which_data = '_SASICA_replicate'; % '' // '_30comp'
 
 setpath_ds003690
 ft_warning('off','FieldTrip:dataContainsNaN')
 
-
+%%
 if not(exist(fullfile(dirout,'AllFilesAndScoresList.mat'), 'file'))
     fs = flister('sub.*/(?<sub>sub-[^_]+)_(?<task>task-[^_]+)_(?<run>run-[^_]+)_(?<mod>eeg).set','dir',dirbids);
     save(fullfile(dirout,'AllFilesAndScoresList.mat'),'fs')
@@ -109,6 +111,7 @@ for i_f = i_f%1:numel(fs)
             data.elec.coordsys = 'EEGLAB';
 
             layout = ft_prepare_layout(cfg,data);
+            % figure; ft_plot_layout(layout)
 
             %%
             cfg = [];
@@ -167,6 +170,7 @@ for i_f = i_f%1:numel(fs)
             cfgtmp.trl = [1, sum(cellfun(@numel,comp.time)), 0]; % Start, End, Offset
         end
         comp_continu = ft_redefinetrial(cfgtmp, comp);
+        data_continu = ft_redefinetrial(cfgtmp, data);
 
     end
 
@@ -174,7 +178,7 @@ for i_f = i_f%1:numel(fs)
         %% CARACAS in SASICA
         cfg = [];
         cfg.channel = 'eeg';
-        EEG = comp2eeglab(cfg, comp, ft_selectdata(cfg,data));
+        EEG = comp2eeglab(cfg, comp_continu, ft_selectdata(cfg,data_continu));
 
         cfg_SASICA = SASICA('getdefs');
         cfg_SASICA.CARACAS.enable = 1;
@@ -182,7 +186,7 @@ for i_f = i_f%1:numel(fs)
         cfg_SASICA.opts.noplotselectcomps = 1;
 
         SASICCARACAS = eeg_SASICA(EEG,cfg_SASICA);
-        fs(i_f).SASICARACAS.cfg = SASICCARACAS.reject.SASICA.icaCARACAS_cfg;
+        fs(i_f).SASICARACAS.cfg = SASICCARACAS.reject.SASICA.icaCARACAS(1).cfg;
         fs(i_f).SASICARACAS.meas = SASICCARACAS.reject.SASICA.icaCARACAS;
         fs(i_f).SASICARACAS.rej = SASICCARACAS.reject.gcompreject;
     end
@@ -190,7 +194,7 @@ for i_f = i_f%1:numel(fs)
         %% CARACAS in SASICA after modifying eeg_SASICA to use option absPT for heart_peak_detect
         cfg = [];
         cfg.channel = 'eeg';
-        EEG = comp2eeglab(cfg, comp, ft_selectdata(cfg,data));
+        EEG = comp2eeglab(cfg, comp_continu, ft_selectdata(cfg,data_continu));
 
         cfg_SASICA = SASICA('getdefs');
         cfg_SASICA.CARACAS.enable = 1;
@@ -222,7 +226,7 @@ for i_f = i_f%1:numel(fs)
             
             % Store results with descriptive field name
             field_name = ['SASICARACAS_' param_names{i_comb}];
-            fs(i_f).(field_name).cfg = SASICCARACAS.reject.SASICA.icaCARACAS_cfg;
+            fs(i_f).(field_name).cfg = SASICCARACAS.reject.SASICA.icaCARACAS(1).cfg;
             fs(i_f).(field_name).meas = SASICCARACAS.reject.SASICA.icaCARACAS;
             fs(i_f).(field_name).rej = SASICCARACAS.reject.gcompreject;
         end
@@ -279,13 +283,45 @@ for i_f = i_f%1:numel(fs)
         fs(i_f).CORR.c = c;
         fs(i_f).CORR.rej = rej;
 
-        %% SDT
-        fs(i_f).pC = sum(fs(i_f).CORR.rej == fs(i_f).CARACAS.rej) / numel(fs(i_f).CORR.rej);
-        fs(i_f).dp = PAL_SDT_MAFC_PCtoDP(fs(i_f).pC,numel(fs(i_f).CORR.rej));
-        fs(i_f).H = sum(fs(i_f).CORR.rej & fs(i_f).CARACAS.rej);
-        fs(i_f).FA = sum(~ fs(i_f).CORR.rej & fs(i_f).CARACAS.rej);
     end
+    if controlplot
+        %% Control plot: overlay all CARACAS measures
+        measure_names = {'RPeakstoNoise', 'sk', 'ku', 'RR', 'Rampl', 'bpm'};
+        n_measures = numel(measure_names);
+        n_comps = numel(comp.label);
 
+        figure('Name', sprintf('%s_%s_%s - CARACAS Measures Comparison', fs(i_f).sub, fs(i_f).task, fs(i_f).run), ...
+            'NumberTitle', 'off', 'Position', [100 100 1400 900]);
+
+        for i_m = 1:n_measures
+            measure_name = measure_names{i_m};
+            subplot(2, 3, i_m);
+
+            % Extract measures from both methods
+            hold on;
+
+            % CARACAS measures
+            if isfield(fs(i_f), 'CARACAS') && isfield(fs(i_f).CARACAS, 'meas') && isfield(fs(i_f).CARACAS.meas,measure_name)
+                caracas_vals = [fs(i_f).CARACAS.meas.(measure_name)];
+                plot(caracas_vals, 'o-', 'DisplayName', 'CARACAS', 'LineWidth', 1.5, 'MarkerSize', 4);
+            end
+
+            % SASICARACAS measures
+            if isfield(fs(i_f), 'SASICARACAS') && isfield(fs(i_f).SASICARACAS, 'meas') && isfield(fs(i_f).SASICARACAS.meas,measure_name)
+                sasicaracas_vals = [fs(i_f).SASICARACAS.meas.(measure_name)];
+                plot(sasicaracas_vals, 's-', 'DisplayName', 'SASICARACAS', 'LineWidth', 1.5, 'MarkerSize', 4);
+            end
+
+            xlabel('Component');
+            ylabel(measure_name);
+            title(sprintf('Measure: %s', measure_name));
+            grid on;
+            legend('Location', 'best');
+            hold off;
+        end
+
+        pause(0.1);  % Allow plot to render
+    end
     % delete(lock)
     f = fs(i_f);
     save(fullfile(dirout,f.sub,sprintf('%s_%s_%s_FilesAndScoresList.mat',f.sub, f.task, f.run)),'f')
@@ -300,85 +336,3 @@ end
 % title(['Classification perf. AUC = ' num2str(AUC)])
 end
 
-function [EEG,cfg] = comp2eeglab(cfg,comp,data)
-
-% create an EEG structure based on comp.
-
-EEG = eeg_emptyset;
-EEG.setname = 'internal';
-EEG.nbchan = numel(comp.topolabel);
-if EEG.nbchan == 0
-    error('No more channels here.')
-end
-EEG.trials = numel(comp.trial);
-EEG.pnts = size(comp.trial{1},2);
-EEG.srate = comp.fsample;
-EEG.xmin = comp.time{1}(1);
-EEG.xmax = comp.time{end}(end);
-EEG.times = comp.time{1}*1000;
-if isscalar(unique(cellfun(@(x) size(x,2),comp.trial)))
-    EEG.icaact = cat(3,comp.trial{:});
-else
-    warning('Trials have unequal length. Catenating for display')
-    EEG.icaact = cat(2,comp.trial{:});
-end
-EEG.icawinv = comp.topo;
-EEG.icaweights = pinv(EEG.icawinv);
-EEG.icasphere  = eye(size(EEG.icaweights,2));
-
-
-EEG.chanlocs = struct();
-if isfield(cfg,'layout')
-    cfg.layout = ft_prepare_layout(cfg);
-else
-    if not(isfield(data,'elec'))
-        warning('No layout provided. Topographies may be inaccurate')
-    end
-end
-for i = 1:EEG.nbchan
-    EEG.chanlocs(i).labels = comp.topolabel{i};
-    % attempt to create a chanlocs
-    if isfield(cfg,'layout')
-        ichan = chnb(comp.topolabel{i},cfg.layout.label);
-        if ~isempty(ichan)
-            [EEG.chanlocs(i).X] = cfg.layout.pos(ichan,1);
-            [EEG.chanlocs(i).Y] = cfg.layout.pos(ichan,2);
-            [EEG.chanlocs(i).Z] = 1;
-        end
-    elseif exist('data','var') && isfield(data,'elec')
-        ichan = chnb(comp.topolabel{i},data.elec.label);
-        if isfield(data.elec,'pnt')
-            EEG.chanlocs(i).X = data.elec.pnt(ichan,1);
-            EEG.chanlocs(i).Y = data.elec.pnt(ichan,2);
-            EEG.chanlocs(i).Z = data.elec.pnt(ichan,3);
-        elseif isfield(data.elec,'chanpos')
-            EEG.chanlocs(i).X = data.elec.chanpos(ichan,1);
-            EEG.chanlocs(i).Y = data.elec.chanpos(ichan,2);
-            EEG.chanlocs(i).Z = data.elec.chanpos(ichan,3);
-        end            
-    end
-end
-EEG.chanlocs = convertlocs(EEG.chanlocs,'cart2all');
-mr = max([EEG.chanlocs.radius]);
-for i = 1:numel(EEG.chanlocs)
-    EEG.chanlocs(i).radius = EEG.chanlocs(i).radius * .5/ mr;
-end
-EEG.chaninfo.nosedir = '+Y';
-
-if not(exist('data','var'))
-    EEG.data = reshape(EEG.icawinv * EEG.icaact(:,:),EEG.nbchan,EEG.pnts,EEG.trials);
-else
-    if isscalar(unique(cellfun(@(x) size(x,2),comp.trial)))
-        EEG.data = cat(3,data.trial{:});
-    else
-        EEG.data = cat(2,data.trial{:});
-        EEG.trials = 1;
-    end
-end
-EEG.pnts = size(EEG.data,2);
-EEG.icachansind = 1:size(EEG.data,1);
-
-if isfield(cfg,'reject')
-    EEG.reject = cfg.reject;
-end
-end

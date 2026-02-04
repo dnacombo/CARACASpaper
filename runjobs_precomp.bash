@@ -4,8 +4,8 @@
 #SBATCH --time=0:10:00
 #SBATCH --cpus-per-task=8
 #SBATCH --job-name=Pom-pidom
-#SBATCH --output=/network/iss/cenir/analyse/meeg/CARACAS/Test_Max/ds003690/derivatives/CardiClassif_SASICA/logs/log-%a
-#SBATCH --error=/network/iss/cenir/analyse/meeg/CARACAS/Test_Max/ds003690/derivatives/CardiClassif_SASICA/logs/err/err-%a
+#SBATCH --output=/network/iss/cenir/analyse/meeg/CARACAS/Test_Max/ds003690/derivatives/CardiClassif_SASICA_replicate/logs/log-%a
+#SBATCH --error=/network/iss/cenir/analyse/meeg/CARACAS/Test_Max/ds003690/derivatives/CardiClassif_SASICA_replicate/logs/err/err-%a
 #SBATCH --array=1-375
 
 echo started on $HOSTNAME

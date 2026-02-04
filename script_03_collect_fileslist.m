@@ -1,5 +1,5 @@
 %%
-which_data = '_SASICA'; % '' // '_30comp'
+which_data = '_SASICA_replicate'; %_HPF1Hz '' // '_30comp'
 
 setpath_ds003690
 %% collect all files created by script_02_ds003690_precomp
@@ -13,7 +13,7 @@ for i_f = 1:numel(fs)
         error('mixing things up...')
     end
     ffs(i_f) = removefields(f,'MANUAL');
-    ffs(i_f).CARACAS.meas = removefields(ffs(i_f).CARACAS.meas,{'QS', 'ST', 'PR', 'RT', 'PT', 'Ampl_var'});
+    % ffs(i_f).CARACAS.meas = removefields(ffs(i_f).CARACAS.meas,{'QS', 'ST', 'PR', 'RT', 'PT', 'Ampl_var'});
 end
 fs = ffs;
 save(fullfile(dirout,'AllFilesAndScoresList.mat'), 'fs');
@@ -40,9 +40,9 @@ for i_f = 1:numel(fs)
     if numel(P) ~= 1
         error('Ambiguous')
     end
-    fs(i_f).MANUAL.rej = false(size(fs(i_f).CARACAS.rej));
-    fs(i_f).MANUAL.rej_sure = false(size(fs(i_f).CARACAS.rej));
-    fs(i_f).MANUAL.rej_noisy = false(size(fs(i_f).CARACAS.rej));
+    fs(i_f).MANUAL.rej = false(size(fs(i_f).SASICARACAS.rej));
+    fs(i_f).MANUAL.rej_sure = false(size(fs(i_f).SASICARACAS.rej));
+    fs(i_f).MANUAL.rej_noisy = false(size(fs(i_f).SASICARACAS.rej));
     fs(i_f).MANUAL.rej(P.CardiComps) = 1;
     fs(i_f).MANUAL.rej_sure(P.CardiComps_good) = 1;
     fs(i_f).MANUAL.rej_noisy(P.CardiComps_noisy) = 1;
