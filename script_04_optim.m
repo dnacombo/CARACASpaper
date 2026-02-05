@@ -27,13 +27,12 @@ K = 5;
 cfg_SASICA = SASICA('getdefs');
 % cfg_SASICA.CARACAS.enable = 1;
 % cfg_CARACAS = cfg_SASICA.CARACAS;
-% cfg_CARACAS.thresh_RPeakstoNoise = 10;
 % cfg_CARACAS.thresh_sk = 1;
 % cfg_CARACAS.thresh_ku = 5;
 % cfg_CARACAS.thresh_RR  = 1/3;
 % cfg_CARACAS.thresh_Rampl = 1/4;
 % cfg_CARACAS.thresh_bpm = [35 100];
-param_vec = [cfg_CARACAS.thresh_RPeakstoNoise cfg_CARACAS.thresh_sk cfg_CARACAS.thresh_ku cfg_CARACAS.thresh_RR cfg_CARACAS.thresh_Rampl cfg_CARACAS.thresh_bpm];
+param_vec = [cfg_CARACAS.thresh_sk cfg_CARACAS.thresh_ku cfg_CARACAS.thresh_RR cfg_CARACAS.thresh_Rampl cfg_CARACAS.thresh_bpm];
 
 % Split data into K folds
 cv = cvpartition(length(fs), 'KFold', K);
@@ -59,7 +58,7 @@ end
 
 %%
 % Display results as a table
-param_names = {'thresh_RPeakstoNoise', 'thresh_sk', 'thresh_ku', 'thresh_RR', 'thresh_Rampl', 'thresh_bpm1', 'thresh_bpm2', 'TestError'};
+param_names = {'thresh_sk', 'thresh_ku1', 'thresh_RR', 'thresh_Rampl', 'thresh_bpm1', 'thresh_bpm2', 'TestError'};
 results_table = [bestparams, testerr'];
 mean_row = [mean(bestparams), mean(testerr)];
 
@@ -71,18 +70,17 @@ T.Properties.RowNames = [arrayfun(@(x) sprintf('Fold_%d', x), 1:K, 'UniformOutpu
 disp('Cross-validation Results:')
 disp(T)
 
-%
+%%
 
 function myerr = CARACASerr(threshs, fs, compare_truth, compare_with)
 
 cfg_SASICA = SASICA('getdefs');
 cfg_CARACAS = cfg_SASICA.CARACAS;
-cfg_CARACAS.thresh_RPeakstoNoise = threshs(1);
-cfg_CARACAS.thresh_sk = threshs(2);
-cfg_CARACAS.thresh_ku = threshs(3);
-cfg_CARACAS.thresh_RR = threshs(4);
-cfg_CARACAS.thresh_Rampl = threshs(5);
-cfg_CARACAS.thresh_bpm = threshs(6:7);
+cfg_CARACAS.thresh_sk = threshs(1);
+cfg_CARACAS.thresh_ku = threshs(2);
+cfg_CARACAS.thresh_RR = threshs(3);
+cfg_CARACAS.thresh_Rampl = threshs(4);
+cfg_CARACAS.thresh_bpm = threshs(5:6);
 
 switch compare_truth
     case 'MANUAL'
