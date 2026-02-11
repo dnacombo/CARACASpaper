@@ -27,11 +27,11 @@ K = 5;
 cfg_SASICA = SASICA('getdefs');
 % cfg_SASICA.CARACAS.enable = 1;
 % cfg_CARACAS = cfg_SASICA.CARACAS;
-% cfg_CARACAS.thresh_sk = 1;
-% cfg_CARACAS.thresh_ku = 5;
-% cfg_CARACAS.thresh_RR  = 1/3;
-% cfg_CARACAS.thresh_Rampl = 1/4;
-% cfg_CARACAS.thresh_bpm = [35 100];
+cfg_CARACAS.thresh_sk = 1;
+cfg_CARACAS.thresh_ku = 5;
+cfg_CARACAS.thresh_RR  = 1/3;
+cfg_CARACAS.thresh_Rampl = 1/4;
+cfg_CARACAS.thresh_bpm = [35 100];
 param_vec = [cfg_CARACAS.thresh_sk cfg_CARACAS.thresh_ku cfg_CARACAS.thresh_RR cfg_CARACAS.thresh_Rampl cfg_CARACAS.thresh_bpm];
 
 % Split data into K folds
