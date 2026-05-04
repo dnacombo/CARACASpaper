@@ -4,7 +4,7 @@
 % close all
 
 %% 
-which_data = '_SASICA_replicate'; % _HPF1Hz'' // '_30comp'_HPF1Hz
+which_data = '_SASICA_final'; % '' // '_30comp'_HPF1Hz
 
 setpath_ds003690
 
@@ -21,10 +21,10 @@ if ispc
     end
 end
 
-plot_dir = fullfile(dirout, '..', 'CardiClassif_SASICA', 'plots_compare');! USER CHOOSE PARAMETERS !!!!!
+plot_dir = fullfile(dirout, '..', 'CardiClassif_SASICA', 'plots_compare');
 
 
-nb_IC_of_interest = 55;%'all';%10;% %%45;% 'all' // 
+nb_IC_of_interest = 10;%'all';%55;%10;% %%45;% 'all' // 
 
 which_col_in_csv = '_sure'; % '' // '_sure' // 'rej_noisy'
 
@@ -34,7 +34,7 @@ compare_truth = 'MANUAL';
 param_combinations = {};%'SASICARACAS_orig', 'SASICARACAS_absPT', 'SASICARACAS_abstemplate', 'SASICARACAS_NaNST', 'SASICARACAS_absPT_abstemplate', 'SASICARACAS_absPT_NaNST', 'SASICARACAS_abstemplate_NaNST', 'SASICARACAS_absPT_abstemplate_NaNST'};
 
 % Also include standard comparisons
-standard_comparisons = {'SASICARACAS' 'CARACAS'};%'ICLabel' , 'CARACAS', , 'CORR'
+standard_comparisons = {'SASICARACAS' 'ICLabel' ,'CORR'};% 'CARACAS''CARACAS', , 
 all_comparisons = [standard_comparisons, param_combinations];
 
 % Create output directory for plots
@@ -104,6 +104,8 @@ for i_comp = 1:length(all_comparisons)
     title(compare_with, 'interpreter', 'none')
     set(hi,"ButtonDownFcn",@plotit);
 
+    fprintf('Number of Manual rejections: %g\n',sum(truthrej(:)))
+    fprintf('Number of Hits: %g\n',sum(truthrej(:) & withrej(:)))
     subplot(3,2,[3 6]);
     toplot = NaN(size(truthrej));
     toplot(truthrej & withrej) = 1;     % Hit
@@ -123,7 +125,7 @@ for i_comp = 1:length(all_comparisons)
     hline(1:size(toplot,2),':k','pickableparts','none')
     set(gca,'Colormap',varycolor(4))
     set(hi,"ButtonDownFcn",@plotit);
-    clim([0.5 4.5])
+    clim([0.5 4.5]);
     h = colorbar();
     set(h,'YTick',1:4,'yticklabel',names)
 
@@ -139,6 +141,7 @@ for i_comp = 1:length(all_comparisons)
     % FAR = FA / (FA + CR) on the last N rows of toplot
     N = 2; % Number of last components to consider
     FAR = sum(toplot(:,end-N+1:end) == 4) / (sum(toplot(:,end-N+1:end) == 4) + sum(toplot(:,end-N+1:end) == 3));
+    
     fprintf('   FAR (last %d components): %.3f\n', N, FAR);
 
     xlab = sprintf('Sensitivity = %0.3g     Specificity = %0.3g     Balanced Acc = %0.3g', Sensitivity, Specificity, Balanced_accuracy);
@@ -178,7 +181,7 @@ for i_comp = 1:length(all_comparisons)
     saveas(gcf, fig_path);
     fig_path = strrep(fig_path,'.fig','.png');
     saveas(gcf, fig_path);
-    fprintf('   Figure saved: %s\n', fig_path);
+    % fprintf('   Figure saved: %s\n', fig_path);
     
     % Save performance metrics
     results(i_comp).compare_with = compare_with;
@@ -193,7 +196,7 @@ end
 %% Save summary results
 summary_file = fullfile(plot_dir, 'comparison_summary.mat');
 save(summary_file, 'results');
-fprintf('\nSummary results saved: %s\n', summary_file);
+% fprintf('\nSummary results saved: %s\n', summary_file);
 
 % Display summary table
 fprintf('\n=== SUMMARY OF ALL COMPARISONS ===\n');
