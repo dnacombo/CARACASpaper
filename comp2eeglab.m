@@ -74,7 +74,7 @@ else
     end
 end
 EEG.pnts = size(EEG.data,2);
-EEG.icachansind = 1:size(EEG.data,1);
+EEG.icachansind = 1:size(EEG.icaact,1);
 
 if isfield(cfg,'reject')
     EEG.reject = cfg.reject;
