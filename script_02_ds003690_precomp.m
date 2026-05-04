@@ -257,6 +257,7 @@ for i_f = i_f%1:numel(fs)
     if update_ICLabel
         %% IClabel
         activate_matconvnet();
+        EEG = comp2eeglab(cfg, comp, ft_selectdata(cfg,data));
         EEG = pop_iclabel(EEG,'default');
         ICLabel_results = EEG.etc.ic_classification.ICLabel;
         fs(i_f).ICLabel.meas = struct();
