@@ -4,7 +4,7 @@
 % close all
 
 %% 
-which_data = '_SASICA_final'; % '' // '_30comp'_HPF1Hz
+which_data = '_SASICA_HPF1Hz_final'; % '' // '_30comp'
 
 setpath_ds003690
 
@@ -24,7 +24,7 @@ end
 plot_dir = fullfile(dirout, '..', 'CardiClassif_SASICA', 'plots_compare');
 
 
-nb_IC_of_interest = 10;%'all';%55;%10;% %%45;% 'all' // 
+nb_IC_of_interest = 'all';%10;%'lasttwo';%%55;%10;% %%45;% 'all' // 
 
 which_col_in_csv = '_sure'; % '' // '_sure' // 'rej_noisy'
 
@@ -115,7 +115,9 @@ for i_comp = 1:length(all_comparisons)
     names = {'Hit','Miss','CR','FA'};
 
     % Select only a subset of IC
-    if ~ strcmp(nb_IC_of_interest, 'all')
+    if strcmp(nb_IC_of_interest, 'lasttwo')
+        toplot = toplot(:,end-1:end);
+    elseif ~ strcmp(nb_IC_of_interest, 'all')
         toplot = toplot(:,1:nb_IC_of_interest);
     end
 

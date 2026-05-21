@@ -3,7 +3,7 @@ function script_04_print_comps(i_f)
 if not(exist('i_f','var'))
     i_f = 1;
 end
-which_data = '_SASICA';
+which_data = '_SASICA_HPF1Hz';
 setpath_ds003690
 
 dont_plot_topos = 1;

@@ -9,17 +9,17 @@ plot_comp       = 0;
 force_recomp    = 0;
 
 quick_update        = 0;
-update_CARACAS      = 1;
-update_SASICARACAS  = 1;
+update_CARACAS      = 0;
+update_SASICARACAS  = 0;
 update_nuSASICARACAS= 0;% CARACAS in SASICA after modifying eeg_SASICA to use option absPT for heart_peak_detect
-update_ICLabel      = 0;
+update_ICLabel      = 1;
 update_CORR         = 0;
 
 controlplot         = 0;
 
 corthresh = .6; % correlation threshold component time course with ECG
 
-which_data = '_SASICA_replicate'; % '' // '_30comp'
+which_data = '_SASICA_HPF1Hz_final'; % '' // '_30comp'
 
 setpath_ds003690
 ft_warning('off','FieldTrip:dataContainsNaN')

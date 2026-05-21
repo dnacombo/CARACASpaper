@@ -1,5 +1,5 @@
 %%
-which_data = '_SASICA_replicate'; %_HPF1Hz '' // '_30comp'
+which_data = '_SASICA_HPF1Hz_final'; % '' // '_30comp'
 
 setpath_ds003690
 %% collect all files created by script_02_ds003690_precomp
