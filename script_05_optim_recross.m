@@ -103,7 +103,7 @@ disp(BigT)
 fprintf('Grand Mean Error: %.4f\n', mean(outer_results));
 fprintf('Standard Deviation: %.4f\n', std(outer_results));
 
-writetable(BigT,sprintf('script_05_optim_recross_%g.csv',jitt))
+writetable(BigT,sprintf('script_05_optim_recross_%g.csv',jitt), WriteRowNames=true)
 
 function [myerr, Sensitivity, Specificity] = CARACASerr(threshs, fs, compare_truth, compare_with)
 
