@@ -1,6 +1,3 @@
-[submodule "Cardiac_IC_labelling"]
-	path = Cardiac_IC_labelling
-	url = ./Cardiac_IC_labelling
 [submodule "eeglab"]
 	path = eeglab
 	url = ./eeglab/
