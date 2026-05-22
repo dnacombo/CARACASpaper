@@ -1,35 +1,29 @@
-if ispc
-    dirroot = '\\iss\cenir\analyse\meeg\CARACAS\Test_Max\';
-else
-    dirroot = '/network/iss/cenir/analyse/meeg/CARACAS/Test_Max/';
-end
+dirroot = fileparts(fileparts(mfilename('fullpath')));
 dircode = fullfile(dirroot,'code');
-dirbids       = fullfile(dirroot,'ds003690');
+dirbids = fullfile(dirroot,'ds003690');
+if not(exist(dirbids,'file'))
+    error(['Download dataset from https://github.com/OpenNeuroDatasets/ds003690.git and put it in ' dirbids])
+end
 dirderiv = fullfile(dirbids,'derivatives');
 
 
 dirout = fullfile(dirderiv,['CardiClassif' which_data]);
 
-
-
 addpath(fullfile(dircode,'MiscMatlab'))
 addpath(fullfile(dircode,'MiscMatlab', 'stats'))
-addpath(fullfile(dircode,strrep('MiscMatlab/plot/','/',filesep)))
-addpath(fullfile(dircode,strrep('MiscMatlab/plot/panel','/',filesep)))
+addpath(fullfile(dircode,'MiscMatlab','plot'))
+addpath(fullfile(dircode,'MiscMatlab','plot','panel'))
 
 addpath(fullfile(dircode,'SASICA'))
 rm_frompath('eeglab') % avoid interference with other versions
 rm_frompath('fieldtrip')
-% addpath(fullfile(dircode,'MiscMatlab', 'eeglab'))
-% addpath(fullfile(dircode,'eeglab'))
+% add local fieldtrip install
 addpath(fullfile(dircode,'fieldtrip'))
 addpath(fullfile(dircode,'fieldtrip', 'external','eeglab'))
 ft_defaults
-% start EEGLAB
-% [ALLEEG, EEG, CURRENTSET, ALLCOM] = eeglab;
 
-addpath(fullfile(dircode,'Cardiac_IC_labelling'));
-addpath(fullfile(dircode,'Cardiac_IC_labelling', 'heart_functions'));
+addpath(fullfile(dircode,'SASICA','CARACAS'));
+addpath(fullfile(dircode,'SASICA','CARACAS', 'heart_functions'));
 
 cfg_SASICA = SASICA('getdefs');
 addpath(fullfile(dircode, "SASICA",'eeglab'))
