@@ -4,7 +4,7 @@
 % close all
 
 %% 
-which_data = '_SASICA_HPF1Hz_final'; % '' // '_30comp'
+which_data = '_SASICA_final'; % '' // '_30comp' % _HPF1Hz
 
 setpath_ds003690
 
